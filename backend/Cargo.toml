@@ -1,0 +1,33 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+argon2 = { version = "0.5.3", features = ["password-hash", "rand"] }
+askama = "0.12.1"
+async-trait = "0.1.77"
+axum = { version = "0.7.4", features = ["macros", "json"] }
+axum-extra = { version = "0.9.2", features = ["cookie", "cookie-private"] }
+base64 = "0.21.7"
+derive_more = { version = "0.99.17", features = ["display", "from"] }
+lettre = { version = "0.11.4", features = ["tokio1", "tokio1-native-tls"] }
+rand_chacha = "0.3.1"
+rand_core = "0.6.4"
+serde = { version = "1.0.196", features = ["serde_derive"] }
+serde_json = "1.0.114"
+serde_with = "3.6.1"
+sqlx = { version = "0.7.3", features = ["runtime-tokio", "postgres", "time", "uuid"] }
+strum_macros = "0.26.1"
+sus = "0.1.1"
+thiserror = "1.0.57"
+time = "0.3.34"
+tokio = { version = "1.36.0", features = ["full"] }
+tower-cookies = { version = "0.10.0", features = ["signed"] }
+tower-http = { version = "0.5.1", features = ["fs"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["tracing", "env-filter"] }
+uuid = { version = "1.7.0", features = ["v4", "serde"] }
+validator = { version = "0.16.1", features = ["derive"] }
