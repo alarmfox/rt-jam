@@ -202,6 +202,7 @@ pub mod session {
 
     use super::*;
 
+    #[derive(Clone)]
     pub struct Service {
         db: PgPool,
     }

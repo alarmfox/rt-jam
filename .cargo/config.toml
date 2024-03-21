@@ -1,6 +1,6 @@
 [env]
 
-RUST_LOG="rt_jam=debug"
+RUST_LOG="backend=debug"
 
 
 RTJAM_WEBTRANSPORT_PORT="42069"
