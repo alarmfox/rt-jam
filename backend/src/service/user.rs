@@ -35,6 +35,9 @@ impl std::fmt::Debug for User {
             .field("email", &self.email)
             .field("firstname", &self.first_name)
             .field("lastname", &self.last_name)
+            .field("username", &self.username)
+            .field("created_at", &self.created_at)
+            .field("updated_at", &self.updated_at)
             .field("password", &"[redacted]")
             .finish()
     }
@@ -48,6 +51,7 @@ pub mod auth {
 
     use super::*;
 
+    #[derive(Clone)]
     pub struct Service {
         db: PgPool,
         email_service: email::Service,
@@ -78,13 +82,13 @@ pub mod auth {
             ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
            "#,
-        id,
-        first_name,
-        last_name,
-        email,
-        username,
-        token.clone(),
-        OffsetDateTime::now_utc().add(Duration::days(7)),
+            id,
+            first_name,
+            last_name,
+            email,
+            username,
+            token.clone(),
+            OffsetDateTime::now_utc().add(Duration::days(7)),
             false
         )
         .fetch_one(&self.db)
@@ -98,13 +102,18 @@ pub mod auth {
             Error::DatabaseError(e)
         })?;
 
+            let user1 = user.clone();
+            let token = token.clone();
+            let email_service = self.email_service.clone();
+
             tokio::spawn(async move {
-                // self.email_service
-                //     .send_verification_link(&token, &user)
-                // .await
+                let _ = email_service
+                    .send_verification_link(&token, &user1)
+                    .await
+                    .map_err(|_| Error::EmailError);
             });
 
-            Ok(user)
+            Ok(user.clone())
         }
 
         pub async fn login(&self, username: String, password: String) -> Result<User> {
@@ -166,12 +175,12 @@ pub mod auth {
 
             sqlx::query!(
                 r#"UPDATE users SET 
-            verification_token = NULL,
-            verification_token_expires_in = NULL,
-            enabled = TRUE,
-            password = $2
-            WHERE verification_token = $1 AND verification_token_expires_in > now()
-            RETURNING *
+                verification_token = NULL,
+                verification_token_expires_in = NULL,
+                enabled = TRUE,
+                password = $2
+                WHERE verification_token = $1 AND verification_token_expires_in > now()
+                RETURNING *
             "#,
                 token,
                 password

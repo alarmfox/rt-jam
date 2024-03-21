@@ -6,6 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# local libs
+common = {path = "../common/"}
+
 # axum and related stuff
 axum = { version = "0.7.4", features = ["json", "macros"] }
 tower-cookies = { version = "0.10.0", features = ["signed"] }
@@ -38,3 +41,4 @@ uuid = { version = "1.7.0", features = ["v4", "serde"] }
 thiserror = "1.0.57"
 time = { version = "0.3.34",  features = ["formatting", "parsing", "serde"]}
 strum_macros = "0.26.1"
+validator = "0.16.1"

@@ -8,11 +8,12 @@ use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
 use serde::Serialize;
-use tower_cookies::{Cookie, Cookies};
+use tower_cookies::Cookie;
 use tracing::debug;
 
 use super::context::Context;
 use super::error::{Error, Result};
+use super::signed_cookies::Cookies;
 
 pub async fn mw_ctx_require(ctx: Result<CtxW>, req: Request<Body>, next: Next) -> Result<Response> {
     debug!("{:<12} - mw_ctx_require - {ctx:?}", "MIDDLEWARE");
@@ -29,7 +30,7 @@ pub async fn mw_ctx_require(ctx: Result<CtxW>, req: Request<Body>, next: Next) -
 //            to get the appropriate information.
 pub async fn mw_ctx_resolver(
     State(service): State<session::Service>,
-    cookies: Cookies,
+    cookies: Cookies<'_>,
     mut req: Request<Body>,
     next: Next,
 ) -> Response {
@@ -48,7 +49,7 @@ pub async fn mw_ctx_resolver(
     next.run(req).await
 }
 
-async fn ctx_resolve(session_service: session::Service, cookies: &Cookies) -> CtxExtResult {
+async fn ctx_resolve(session_service: session::Service, cookies: &Cookies<'_>) -> CtxExtResult {
     match cookies
         .get(SESSION_COOKIE_NAME)
         .map(|c| c.value().to_string())
@@ -91,11 +92,8 @@ pub enum CtxExtError {
     TokenNotInCookie,
 
     UserNotFound,
-    FailValidate,
-    CannotSetTokenCookie,
 
     CtxNotInRequestExt,
-    CtxCreateFail(String),
     SessionError(String),
 }
 // endregion: --- Ctx Extractor Result/Error

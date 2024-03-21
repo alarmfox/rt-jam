@@ -1,3 +1,4 @@
+use axum::extract::rejection::FormRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
@@ -5,7 +6,8 @@ use serde_with::{serde_as, DisplayFromStr};
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::debug;
-use uuid::Uuid;
+
+use crate::service;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -14,13 +16,8 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[serde(tag = "type", content = "data")]
 pub enum Error {
     // -- Login
-    LoginFailUsernameNotFound,
-    LoginFailUserHasNoPwd {
-        user_id: Uuid,
-    },
-    LoginFailPwdNotMatching {
-        user_id: Uuid,
-    },
+    #[error(transparent)]
+    Service(#[from] service::error::Error),
 
     // -- CtxExtError
     CtxExt(super::mw_auth::CtxExtError),
@@ -33,10 +30,15 @@ pub enum Error {
         serde_json::Error,
     ),
 
-    ReqStampNotInReqExt
-}
+    ReqStampNotInReqExt,
 
-// endregion: --- From rpc-router::Error
+    #[error(transparent)]
+    ValidationError(#[from] validator::ValidationErrors),
+
+    #[error(transparent)]
+    #[serde(skip)]
+    AxumFormRejection(#[from] FormRejection),
+}
 
 // region:    --- Axum IntoResponse
 impl IntoResponse for Error {
@@ -68,17 +70,19 @@ impl core::fmt::Display for Error {
 /// From the root error to the http status code and ClientError
 impl Error {
     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
+        use service::error::Error::*;
         use Error::*;
         match self {
-            // -- Login
-            LoginFailUsernameNotFound
-            | LoginFailUserHasNoPwd { .. }
-            | LoginFailPwdNotMatching { .. } => (StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL),
+            Service(e) => match e {
+                InvalidCredentials => (StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL),
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ClientError::SERVICE_ERROR,
+                ),
+            },
 
             // -- Auth
             CtxExt(_) => (StatusCode::FORBIDDEN, ClientError::NO_AUTH),
-
-            // -- Model
 
             // -- Fallback.
             _ => (
@@ -95,8 +99,6 @@ impl Error {
 pub enum ClientError {
     LOGIN_FAIL,
     NO_AUTH,
-    ENTITY_NOT_FOUND { entity: &'static str, id: i64 },
-
     SERVICE_ERROR,
 }
 // endregion: --- Client Error
