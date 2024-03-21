@@ -12,14 +12,16 @@ use thiserror::Error;
 use tower_cookies::Cookie;
 
 use crate::{
-    api::{auth::SESSION_COOKIE_NAME, context::Context},
+    api::{
+        self,
+        auth::SESSION_COOKIE_NAME,
+        context::Context,
+        error::{Error, Result},
+    },
     service::auth::session,
 };
 
-use super::{
-    error::{Error, Result},
-    signed_cookies::Cookies,
-};
+use super::signed_cookies::Cookies;
 
 pub async fn mw_require_auth(
     ctx: Result<Context>,
@@ -79,9 +81,9 @@ impl<S: Send + Sync> FromRequestParts<S> for Context {
         parts
             .extensions
             .get::<CtxExtResult>()
-            .ok_or(CtxExtError::CtxNotInRequestExt)?
+            .ok_or(Error::AuthError(CtxExtError::CtxNotInRequestExt))?
             .clone()
-            .map_err(Error::CtxExt)
+            .map_err(|e| Error::AuthError(e))
     }
 }
 
@@ -95,5 +97,5 @@ pub enum CtxExtError {
 
     CtxNotInRequestExt,
     CtxCreateFail(String),
-    SessionError(String)
+    SessionError(String),
 }

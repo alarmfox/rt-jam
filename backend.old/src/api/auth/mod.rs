@@ -1,7 +1,6 @@
 use tokio::sync::OnceCell;
 use tower_cookies::Key;
 
-pub mod error;
 pub mod handler;
 mod models;
 pub mod mw_auth;

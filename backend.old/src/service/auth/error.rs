@@ -15,6 +15,7 @@ pub enum Error {
 
     InvalidCredentials,
     NoAuth,
+
     #[error(transparent)]
     SerializationError(#[serde_as(as = "DisplayFromStr")] serde_json::Error),
     UserAlreadyExists,

@@ -3,7 +3,7 @@ use std::ops::Add;
 use axum::{
     extract::{FromRef, State},
     http::StatusCode,
-    response::{IntoResponse},
+    response::IntoResponse,
     Json, Router,
 };
 use serde_json::json;
@@ -11,12 +11,11 @@ use time::{Duration, OffsetDateTime};
 use tower_cookies::{cookie::SameSite, Cookie};
 
 use crate::{
-    api::{context::Context, form::Form},
+    api::{context::Context, error::Result, form::Form},
     service::auth::{auth, session},
 };
 
 use super::{
-    error::Result,
     models::{LoginPayload, RegisterPayload, ResetPayload, StartResetPayload},
     signed_cookies::Cookies,
     SESSION_COOKIE_NAME,

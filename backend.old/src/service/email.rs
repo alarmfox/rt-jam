@@ -1,11 +1,10 @@
-
 use askama::Template;
 use lettre::{
     message::header::ContentType, transport::smtp::authentication::Credentials, AsyncSmtpTransport,
     AsyncTransport, Message, Tokio1Executor,
 };
 
-use super::user::User;
+use super::auth::auth::User;
 
 #[derive(Clone)]
 pub struct Config {
@@ -130,7 +129,7 @@ impl Service {
 }
 
 #[derive(Template)]
-#[template(path = "change-password.html")]
+#[template(path = "email/change-password.html")]
 struct ChangePassword {
     subject: String,
     user: User,

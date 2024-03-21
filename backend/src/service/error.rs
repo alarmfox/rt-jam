@@ -1,35 +1,31 @@
-use axum::http::StatusCode;
-use derive_more::From;
 use serde::Serialize;
 use serde_with::{serde_as, DisplayFromStr};
 use thiserror::Error;
 
-use crate::api::auth;
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[serde_as]
-#[derive(Debug, Serialize, Error, From)]
+#[derive(Debug, Serialize, Error)]
 pub enum Error {
-    #[error(transparent)]
-    AuthError(auth::error::Error),
+    CryptoError,
 
     #[error(transparent)]
-    DatabaseError(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
+    DatabaseError(
+        #[from]
+        #[serde_as(as = "DisplayFromStr")]
+        sqlx::Error,
+    ),
+
+    InvalidCredentials,
+    NoAuth,
 
     #[error(transparent)]
     SerializationError(#[serde_as(as = "DisplayFromStr")] serde_json::Error),
+    UserAlreadyExists,
 }
 
-impl Error {
-	pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
-        todo!()
-	}
-}
-
-#[derive(Debug, strum_macros::AsRefStr)]
-#[allow(non_camel_case_types)]
-pub enum ClientError {
-	LOGIN_FAIL,
-	NO_AUTH,
-	INVALID_PARAMS,
-	SERVICE_ERROR,
+impl core::fmt::Display for Error {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        write!(fmt, "{self:?}")
+    }
 }

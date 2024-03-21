@@ -11,9 +11,11 @@ use strum_macros::AsRefStr;
 use thiserror::Error;
 use validator::ValidationErrorsKind;
 
-use crate::service::error::Error as ServiceError;
+use crate::service::{self, error::Error as ServiceError};
 
-use super::auth;
+use super::auth::mw_auth;
+
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[serde_as]
 #[derive(Debug, Serialize, Error, AsRefStr)]
@@ -27,7 +29,10 @@ pub enum Error {
     AxumFormRejection(#[from] FormRejection),
 
     #[error(transparent)]
-    Auth(#[from] auth::error::Error),
+    ServiceError(#[from] service::error::Error),
+
+    #[error(transparent)]
+    AuthError(#[from] mw_auth::CtxExtError)
 }
 
 impl IntoResponse for ServiceError {
@@ -35,6 +40,12 @@ impl IntoResponse for ServiceError {
         let mut res = StatusCode::INTERNAL_SERVER_ERROR.into_response();
         res.extensions_mut().insert(Arc::new(self));
         res
+    }
+}
+
+impl Error {
+    pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
+        todo!()
     }
 }
 
@@ -51,4 +62,12 @@ fn make_error_message(e: validator::ValidationErrors) -> String {
         ValidationErrorsKind::Field(e) => e.first().unwrap().to_string(),
         _ => todo!(),
     }
+}
+#[derive(Debug, strum_macros::AsRefStr)]
+#[allow(non_camel_case_types)]
+pub enum ClientError {
+    LOGIN_FAIL,
+    NO_AUTH,
+    INVALID_PARAMS,
+    SERVICE_ERROR,
 }
