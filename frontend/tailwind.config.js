@@ -4,6 +4,7 @@ module.exports = {
     "./src/**/*.{html,rs}",
     "./index.html"
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
@@ -23,6 +24,10 @@ module.exports = {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require("tailwindcss"),
+    require("autoprefixer"),
+    require("flowbite/plugin")
+  ],
 }
 
