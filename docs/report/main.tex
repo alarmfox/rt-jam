@@ -1,0 +1,101 @@
+\documentclass{article}
+
+\usepackage{tikz, hyperref, cleveref, apacite}
+
+\crefformat{section}{\S#2#1#3}
+\crefformat{subsection}{\S#2#1#3}
+\crefformat{subsubsection}{\S#2#1#3}
+\crefformat{figure}{#2Figura~#1#3}
+\crefformat{footnote}{#2\footnotemark[#1]#3}
+\crefformat{table}{#2Tabella~#1#3}
+
+\usepackage[bottom]{footmisc}
+\usepackage[margin=1in]{geometry}
+\renewcommand{\contentsname}{Indice}
+\renewcommand{\refname}{Riferimenti}
+
+
+\title{RT-Jam}
+
+\author{Giuseppe Capasso}
+
+\begin{document}
+
+\begin{titlepage}
+  \thispagestyle{empty}
+  \raggedright % Allinea a sinistra
+
+  \begin{tikzpicture}
+    \node[anchor=south west] at (4,0) {\includegraphics[scale=0.75]{./figures/unina-logo-1.png}};
+    \node[anchor=south west] at (0,1.5) {\includegraphics{./figures/unina-logo-2.png}};
+    \node[anchor=south west] at (0,0.5) {\textsf{Scuola Politecnica e delle Scienze di Base}};
+    \node[anchor=south west] at (0,0) {\textsf{Corso di Laurea Magistrale in Ingegneria Informatica}};
+  \end{tikzpicture}
+
+  \vfill
+
+  {\textbf{\textit{\LARGE RT-Jam}}}
+  \\[2cm]
+
+  {\textbf{\textit{\Large Elaborato di Web and Real Time Communication Systems}}}
+  \\[1cm]
+  {\large Anno Accademico 2023/2024}
+
+  \vfill
+
+  \begin{table}[h]
+    \textbf{Giuseppe Capasso}
+    \\
+    \textbf{matr. M63001498}
+  \end{table}
+
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section*{Introduzione}
+Il progetto ha come obiettivo quello di esplorare un modo più moderno di approcciarsi al 
+mondo dello sviluppo web.  Oggigiorno le applicazioni devono essere altamente interattive e
+vanno oltre la semplice visualizzazione di immagini statiche e pagine HTML per cui era stato
+pensato il web inizialmente. Infatti, il web prende un'accezione sempre più larga
+in cui alla navigazione classica mediante un browser si aggiungono requisiti di sicurezza,
+performance e comunicazioni a bassa latenza. 
+
+In particolare, il progetto utilizza uno stack software basato su Rust che utilizza
+\textit{WebAssembly} per interagire con il browser ed esplorare il protocollo QUIC per
+realizzare un'applicazione di streaming audio a bassa latenza.
+\clearpage
+\section{Architettura}
+\clearpage
+\section{Implementazione}
+\subsection{Tecnologie utilizzate}
+\subsubsection{Stack software}
+Il progetto è realizzato completamente in Rust: un linguaggio compilato fortemente tipizzato
+con un meccanismo di gestione della memoria innovativo basato sul concetto di
+\textbf{\textit{borrowing}}. 
+Infatti, usando il \textbf{\textit{borrow checker}} Rust riesce a fare a meno di un 
+\textit{runtime} con un \textit{garbage collector} garantendo il concetto di \textit{memory
+safety} a tempo di compilazione\footnote{Con \textit{memory safety} si intende l'assenza 
+di vulnerabilità del tipo \textit{use after free, double free} e accesso a puntatori
+invalidi}.
+
+\paragraph{Web framework: Axum} Axum è un framework web basato sul runtime asincrono
+\textit{Tokio} che consente di effettuare multiplexing delle connessioni sfruttando le 
+risorse fisiche della macchina in maniera efficiente. Come tutti i web framework, quali
+Spring, ASP.net etc., Axum consente di definire un'architettura a middleware basata sui
+pattern IoC (Inversion of Control) e dependency injection. 
+
+\paragraph{Database communication: sqlx} Grazie al sistema delle \textit{macro} compilate,
+è possibile utilizzare una libreria che fa affidamento su \textit{sql} per la comunicazione 
+con il database. In questo modo, viene eliminato l'overhead della \textit{mapping} delle 
+righe del database in oggetti.
+
+\clearpage
+\section{Installazione}
+\clearpage
+
+
+\bibliography{refs}
+\bibliographystyle{apacite}
+\end{document}
