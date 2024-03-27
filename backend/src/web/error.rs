@@ -1,4 +1,4 @@
-use axum::extract::rejection::FormRejection;
+use axum::extract::rejection::{FormRejection, JsonRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
@@ -37,7 +37,7 @@ pub enum Error {
 
     #[error(transparent)]
     #[serde(skip)]
-    AxumFormRejection(#[from] FormRejection),
+    AxumJsonRejection(#[from] JsonRejection),
 }
 
 // region:    --- Axum IntoResponse

@@ -1,9 +1,9 @@
-use components::router::App;
+use app::App;
 
+mod app;
 mod components;
-mod layout;
+mod store;
 
 fn main() {
-    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
 }

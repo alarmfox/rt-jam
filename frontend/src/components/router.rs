@@ -1,7 +1,11 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::{components::pages::{login::Login, not_found::NotFound, register::Register}, layout::Layout};
+use crate::{
+    components::pages::{login::Login, not_found::NotFound, register::Register},
+};
+
+use super::{layouts::simple::SimpleLayout, pages::{change_password::ChangePassword, reset_password::StartReset}};
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
@@ -17,61 +21,52 @@ pub enum Route {
     #[at("/change-password")]
     ChangePassword,
 
+    #[at("/start-reset")]
+    StartReset,
+
     #[at("/not-found")]
     NotFound,
-}
-
-#[function_component(App)]
-pub fn app() -> Html {
-    html! {
-        <BrowserRouter>
-            <Switch<Route> render={switch} />
-        </BrowserRouter>
-    }
 }
 
 #[function_component(Home)]
 fn home() -> Html {
     html! {
-    <h1 class="bg-purple-600"> { "Hello world" } </h1>
+        <h1 class="bg-purple-600"> { "Hello world" } </h1>
     }
 }
 
-#[function_component(ChangePassword)]
-fn change_passsword() -> Html {
-    html! {
-    <h1 class="bg-purple-600"> { "Change password" } </h1>
-    }
-}
-
-
-fn switch(routes: Route) -> Html {
+pub fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! {
-            <Layout>
+            <SimpleLayout>
                 <h1>{ "Home" }</h1>
-            </Layout>
+            </SimpleLayout>
         },
         Route::Login => html! {
-            <Layout>
+            <SimpleLayout>
                 <Login/>
-            </Layout>
+            </SimpleLayout>
         },
-        Route::Register=> html! {
-            <Layout>
+        Route::Register => html! {
+            <SimpleLayout>
                 <Register/>
-            </Layout>
+            </SimpleLayout>
         },
         Route::ChangePassword => html! {
-            <Layout>
+            <SimpleLayout>
                 <ChangePassword/>
-            </Layout>
+            </SimpleLayout>
+        },
+        Route::StartReset => html! {
+            <SimpleLayout>
+                <StartReset/>
+            </SimpleLayout>
         },
         Route::NotFound => {
             html! {
-                <Layout>
+                <SimpleLayout>
                     <NotFound />
-                </Layout>
+                </SimpleLayout>
             }
         }
     }

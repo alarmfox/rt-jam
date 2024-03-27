@@ -3,13 +3,29 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Clone, Validate)]
 pub struct LoginRequest {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Username length must be between 3 and 50 characters"
+    ))]
     pub username: String,
     pub password: String,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LoginResponse {
+    pub id: Uuid,
+    pub email: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub username: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Validate)]
 pub struct RegisterRequest {
     #[validate(length(
         min = 3,
@@ -36,7 +52,7 @@ pub struct RegisterRequest {
     pub username: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct RegisterResponse {
     pub id: Uuid,
     pub email: String,
@@ -47,7 +63,7 @@ pub struct RegisterResponse {
     pub updated_at: String,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Clone, Validate)]
 pub struct ChangePasswordRequest {
     pub token: String,
     #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
@@ -55,7 +71,7 @@ pub struct ChangePasswordRequest {
     pub confirm_password: String,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Clone, Validate)]
 pub struct StartResetRequest{
     #[validate(email(message = "Invalid email"))]
     pub email: String,

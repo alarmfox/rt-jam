@@ -1,4 +1,4 @@
-use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
+use axum::{extract::State, response::IntoResponse, routing::post, Json as AJson, Router};
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
 use tower_cookies::{cookie::SameSite, Cookie};
@@ -6,11 +6,11 @@ use tower_cookies::{cookie::SameSite, Cookie};
 use crate::service::user::{auth, session, User};
 
 use super::{
-    error::Result, form::Form, mw_auth::CtxW, signed_cookies::Cookies, SESSION_COOKIE_NAME,
+    error::Result, json::Json, mw_auth::CtxW, signed_cookies::Cookies, SESSION_COOKIE_NAME,
 };
 
 use common::types::{
-    ChangePasswordRequest, LoginRequest, RegisterRequest, RegisterResponse, StartResetRequest,
+    ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, StartResetRequest
 };
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ async fn login(
         session_service,
     }): State<AppState>,
     cookies: Cookies<'_>,
-    Form(LoginRequest { username, password }): Form<LoginRequest>,
+    Json(LoginRequest { username, password }): Json<LoginRequest>,
 ) -> Result<impl IntoResponse> {
     let user = auth_service.login(username, password).await?;
     let expiration = {
@@ -49,7 +49,7 @@ async fn login(
     };
     let token = session::Service::generate_token();
     session_service
-        .create(&token, &session::SessionData::from(user), expiration)
+        .create(&token, &session::SessionData::from(user.clone()), expiration)
         .await?;
 
     let cookie = Cookie::build(Cookie::new(SESSION_COOKIE_NAME, token))
@@ -62,9 +62,7 @@ async fn login(
 
     cookies.add(cookie);
 
-    Ok(Json(json!({
-        "result": { "success": true }
-    })))
+    Ok(AJson(LoginResponse::from(user)))
 }
 
 async fn logout(
@@ -74,50 +72,75 @@ async fn logout(
     context: CtxW,
 ) -> Result<impl IntoResponse> {
     session_service.delete(&context.0.get_token()).await?;
-    Ok(Json(json!({
+    Ok(AJson(json!({
         "result": { "success": true }
     })))
 }
 
 async fn register(
     State(AppState { auth_service, .. }): State<AppState>,
-    Form(RegisterRequest {
+    Json(RegisterRequest {
         first_name,
         last_name,
         email,
         username,
-    }): Form<RegisterRequest>,
+    }): Json<RegisterRequest>,
 ) -> Result<impl IntoResponse> {
     let user = auth_service
         .register(first_name, last_name, email, username)
         .await?;
 
-    Ok(Json(RegisterResponse::from(user)))
+    Ok(AJson(RegisterResponse::from(user)))
 }
 
 async fn change_password(
     State(AppState { auth_service, .. }): State<AppState>,
-    Form(ChangePasswordRequest {
+    Json(ChangePasswordRequest {
         token, password, ..
-    }): Form<ChangePasswordRequest>,
+    }): Json<ChangePasswordRequest>,
 ) -> Result<impl IntoResponse> {
     auth_service.reset_password(password, token).await?;
 
-    Ok(Json(json!({
+    Ok(AJson(json!({
         "result": { "success": true }
     })))
 }
 async fn start_reset(
     State(AppState { auth_service, .. }): State<AppState>,
-    Form(StartResetRequest { email }): Form<StartResetRequest>,
+    Json(StartResetRequest { email }): Json<StartResetRequest>,
 ) -> Result<impl IntoResponse> {
     auth_service.start_password_reset(email).await?;
 
-    Ok(Json(json!({
+    Ok(AJson(json!({
         "result": { "success": true }
     })))
 }
 impl From<User> for RegisterResponse {
+    fn from(
+        User {
+            id,
+            email,
+            first_name,
+            last_name,
+            username,
+            created_at,
+            updated_at,
+            ..
+        }: User,
+    ) -> Self {
+        Self {
+            id,
+            email,
+            first_name,
+            last_name,
+            username,
+            created_at: created_at.to_string(),
+            updated_at: updated_at.to_string(),
+        }
+    }
+}
+
+impl From<User> for LoginResponse{
     fn from(
         User {
             id,

@@ -7,8 +7,8 @@ pub struct Props {
     pub children: Html, // the field name `children` is important!
 }
 
-#[function_component(Layout)]
-pub fn layout(props: &Props) -> Html {
+#[function_component(SimpleLayout)]
+pub fn simple_layout(props: &Props) -> Html {
     html!(
         <div class={"flex flex-col h-screen"}>
             <main class={"flex-grow mt-auto overflow-y-auto mb-1"}>
