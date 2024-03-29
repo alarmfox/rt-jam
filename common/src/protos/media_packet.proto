@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+message MediaPacket {
+  enum MediaType {
+    VIDEO = 0;
+    AUDIO = 1;
+    SCREEN = 2;
+    HEARTBEAT = 3;
+  }
+  MediaType media_type = 1;
+  string email = 2;
+  bytes data = 3;
+  string frame_type = 4;
+  double timestamp = 5;
+  double duration = 6;
+  AudioMetadata audio_metadata = 7;
+  VideoMetadata video_metadata = 8;
+}
+
+message AudioMetadata {
+  string audio_format = 1;
+  uint32 audio_number_of_channels = 2;
+  uint32 audio_number_of_frames = 3;
+  float audio_sample_rate = 4;
+}
+
+message VideoMetadata {
+  uint64 sequence = 1;
+}

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use axum::{
     extract::State,
     response::IntoResponse,
@@ -10,7 +8,11 @@ use serde_json::json;
 use time::{Duration, OffsetDateTime};
 use tower_cookies::{cookie::SameSite, Cookie};
 
-use crate::service::user::{auth, session::{self, SessionData}, User};
+use crate::service::user::{
+    auth,
+    session::{self},
+    User,
+};
 
 use super::{
     error::Result, json::Json, mw_auth::CtxW, signed_cookies::Cookies, SESSION_COOKIE_NAME,
@@ -79,9 +81,7 @@ async fn login(
     })))
 }
 
-async fn me(
-    context: CtxW,
-) -> Result<impl IntoResponse> {
+async fn me(context: CtxW) -> Result<impl IntoResponse> {
     let session = context.0.get_session();
     let session = session.clone();
 

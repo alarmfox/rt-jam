@@ -5,7 +5,7 @@ use crate::{
     components::pages::{login::Login, not_found::NotFound, register::Register},
 };
 
-use super::{layouts::simple::SimpleLayout, pages::{change_password::ChangePassword, reset_password::StartReset}};
+use super::{layouts::simple::SimpleLayout, pages::{change_password::ChangePassword, home::Home, reset_password::StartReset}};
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
@@ -28,18 +28,11 @@ pub enum Route {
     NotFound,
 }
 
-#[function_component(Home)]
-fn home() -> Html {
-    html! {
-        <h1 class="bg-purple-600"> { "Hello world" } </h1>
-    }
-}
-
 pub fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! {
             <SimpleLayout>
-                <h1>{ "Home" }</h1>
+                <Home />
             </SimpleLayout>
         },
         Route::Login => html! {

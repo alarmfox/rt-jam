@@ -2,6 +2,8 @@ mod log;
 mod service;
 mod web;
 
+use std::{future::IntoFuture, net::ToSocketAddrs};
+
 use axum::{middleware, routing::get, Router};
 use base64::{engine::general_purpose, Engine};
 use service::{
@@ -9,8 +11,9 @@ use service::{
     user::{auth, session},
 };
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use tokio::{signal, task::AbortHandle};
 use tower_cookies::{CookieManagerLayer, Key};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use web::{
     mw_auth::{mw_ctx_require, mw_ctx_resolver},
@@ -19,7 +22,10 @@ use web::{
     routes_login,
 };
 
-use crate::web::SESSION_COOKIE_KEY;
+use crate::web::{
+    webtransport::{self, Certs},
+    SESSION_COOKIE_KEY,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,6 +58,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set(Key::from(key.as_ref()))
         .expect("cannot set key");
 
+    let deletion_task = tokio::spawn(
+        session_service
+            .clone()
+            .continously_delete_expired_sessions(tokio::time::Duration::from_secs(60)),
+    );
+
+    let opt = webtransport::WebTransportOpt {
+        listen: "0.0.0.0:4433".to_socket_addrs().unwrap().next().unwrap(),
+        certs: Certs {
+            key: "backend/certs/localhost.dev.key".into(),
+            cert: "backend/certs/localhost.dev.pem".into(),
+        },
+    };
+
     let app = Router::new().route("/test", get(|| async { "Hello world" }));
 
     let app = app
@@ -68,9 +88,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(middleware::from_fn(mw_req_stamp_resolver))
         .layer(CookieManagerLayer::new());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     info!("listening on {}", "0.0.0.0:3000");
-    axum::serve(listener, app).await?;
+    tokio::select! {
+        res = axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal(deletion_task.abort_handle())).into_future() => {
+            Ok(())
+        },
+        res = webtransport::start(opt).into_future() => {
+            res
+        }
+    }?;
 
     Ok(())
 }
@@ -83,4 +111,28 @@ async fn connect_to_db(dsn: &'static str) -> Result<PgPool, Box<dyn std::error::
         .await?;
 
     Ok(conn)
+}
+
+async fn shutdown_signal(deletion_task_abort_handle: AbortHandle) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { deletion_task_abort_handle.abort() },
+        _ = terminate => { deletion_task_abort_handle.abort() },
+    }
 }

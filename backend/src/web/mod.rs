@@ -9,6 +9,7 @@ pub mod mw_res_map;
 pub mod mw_req_stamp;
 pub mod routes_login;
 pub mod signed_cookies;
+pub mod webtransport;
 
 pub const SESSION_COOKIE_NAME: &str = "session-id";
 pub static SESSION_COOKIE_KEY: OnceCell<Key> = OnceCell::const_new(); 

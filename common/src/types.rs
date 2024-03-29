@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+
 #[derive(Serialize, Deserialize, Clone, Validate)]
 pub struct LoginRequest {
     #[validate(length(
