@@ -1,16 +1,23 @@
-use axum::{extract::State, response::IntoResponse, routing::post, Json as AJson, Router};
+use std::ops::Deref;
+
+use axum::{
+    extract::State,
+    response::IntoResponse,
+    routing::{get, post},
+    Json as AJson, Router,
+};
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
 use tower_cookies::{cookie::SameSite, Cookie};
 
-use crate::service::user::{auth, session, User};
+use crate::service::user::{auth, session::{self, SessionData}, User};
 
 use super::{
     error::Result, json::Json, mw_auth::CtxW, signed_cookies::Cookies, SESSION_COOKIE_NAME,
 };
 
 use common::types::{
-    ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, StartResetRequest
+    ChangePasswordRequest, LoginRequest, RegisterRequest, StartResetRequest, UserResponse,
 };
 
 #[derive(Clone)]
@@ -24,6 +31,7 @@ pub fn router(auth_service: auth::Service, session_service: session::Service) ->
         .route("/sign-in", post(login))
         .route("/sign-up", post(register))
         .route("/sign-out", post(logout))
+        .route("/me", get(me))
         .route("/change-password", post(change_password))
         .route("/start-reset", post(start_reset))
         .with_state(AppState {
@@ -49,7 +57,11 @@ async fn login(
     };
     let token = session::Service::generate_token();
     session_service
-        .create(&token, &session::SessionData::from(user.clone()), expiration)
+        .create(
+            &token,
+            &session::SessionData::from(user.clone()),
+            expiration,
+        )
         .await?;
 
     let cookie = Cookie::build(Cookie::new(SESSION_COOKIE_NAME, token))
@@ -62,7 +74,24 @@ async fn login(
 
     cookies.add(cookie);
 
-    Ok(AJson(LoginResponse::from(user)))
+    Ok(AJson(json!({
+        "result": { "success": true }
+    })))
+}
+
+async fn me(
+    context: CtxW,
+) -> Result<impl IntoResponse> {
+    let session = context.0.get_session();
+    let session = session.clone();
+
+    Ok(AJson(UserResponse {
+        id: session.id,
+        email: session.email,
+        first_name: session.first_name,
+        last_name: session.last_name,
+        username: session.username,
+    }))
 }
 
 async fn logout(
@@ -90,7 +119,7 @@ async fn register(
         .register(first_name, last_name, email, username)
         .await?;
 
-    Ok(AJson(RegisterResponse::from(user)))
+    Ok(AJson(UserResponse::from(user)))
 }
 
 async fn change_password(
@@ -115,7 +144,7 @@ async fn start_reset(
         "result": { "success": true }
     })))
 }
-impl From<User> for RegisterResponse {
+impl From<User> for UserResponse {
     fn from(
         User {
             id,
@@ -134,33 +163,6 @@ impl From<User> for RegisterResponse {
             first_name,
             last_name,
             username,
-            created_at: created_at.to_string(),
-            updated_at: updated_at.to_string(),
-        }
-    }
-}
-
-impl From<User> for LoginResponse{
-    fn from(
-        User {
-            id,
-            email,
-            first_name,
-            last_name,
-            username,
-            created_at,
-            updated_at,
-            ..
-        }: User,
-    ) -> Self {
-        Self {
-            id,
-            email,
-            first_name,
-            last_name,
-            username,
-            created_at: created_at.to_string(),
-            updated_at: updated_at.to_string(),
         }
     }
 }

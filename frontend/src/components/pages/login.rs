@@ -1,21 +1,21 @@
 use std::{cell::RefCell, ops::Deref, rc::Rc};
 
-use common::types::{LoginRequest, LoginResponse};
+use common::types::{LoginRequest, UserResponse};
 use gloo_net::http::Request;
 use validator::{Validate, ValidationErrors};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{console::log_1, RequestInit};
+use web_sys::console::log_1;
 use yew::prelude::*;
 use yew_router::{components::Link, hooks::use_navigator};
 use yewdux::use_store;
 
 use crate::{
     components::{
-        atoms::{form_title::TextTitle, logo::Logo, text_input::TextInput},
+        atoms::{form_title::TextTitle, logo::Logo, text_error::TextError, text_input::TextInput},
         pages::classes::{box_div_classes, main_div_classes, submit_button_classes},
         router::Route,
     },
-    store::{Store, User},
+    store::Store,
 };
 
 fn get_input_callback(
@@ -42,10 +42,12 @@ pub fn login() -> Html {
         password: "".into(),
     });
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
+    let error_message = use_state(|| None::<AttrValue>);
 
     let onsubmit = {
         let form = form.clone();
         let validation_errors = validation_errors.clone();
+        let error_message = error_message.clone();
         Callback::from(move |e: SubmitEvent| {
             e.prevent_default();
 
@@ -54,23 +56,27 @@ pub fn login() -> Html {
                     let form = form.deref().clone();
                     let dispatch = dispatch.clone();
                     let navigator = navigator.clone();
+                    let error_message = error_message.clone();
                     spawn_local(async move {
                         let body = serde_json::to_string(&form).unwrap();
-                        let response = Request::post("/api/auth/sign-in")
+                        match Request::post("/api/auth/sign-in")
                             .header("Content-Type", "application/json")
                             .body(Some(body))
                             .send()
                             .await
-                            .unwrap()
-                            .json::<LoginResponse>()
-                            .await
-                            .unwrap();
-
-                        let user = User {
-                            username: response.username,
+                        {
+                            Ok(res) => {
+                                if res.ok() {
+                                    navigator.replace(&Route::Home);
+                                } else {
+                                    error_message.set(Some("Invalid credentials".into()));
+                                }
+                            }
+                            // network error
+                            Err(err) => {
+                                log_1(&err.to_string().into());
+                            }
                         };
-                        dispatch.reduce_mut(move |s| s.auth_user = Some(user));
-                        navigator.replace(&Route::Home);
                     });
                 }
                 Err(e) => {
@@ -127,10 +133,10 @@ pub fn login() -> Html {
                 <form onsubmit={onsubmit} class={"space-y-4 md:space-y-6"}>
                     <TextInput label={"Username"} name={"username"} handle_onchange={username_change} handle_on_input_blur={onblur.clone()} errors={&*validation_errors}/>
                     <TextInput t={"password"} label={"Password"} name={"password"} handle_onchange={password_change} handle_on_input_blur={onblur.clone()} errors={&*validation_errors}/>
-
                     <div class={"flex items-center justify-between"}>
                         <Link<Route> to={Route::StartReset} classes={"text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"}>{"Forgot password?"}</Link<Route>>
                     </div>
+                    <TextError error={error_message.deref().clone()} />
                     <button type={"submit"} class={submit_button_classes()}>
                         <div class={"flex justify-center"}>
                             <span>{"Sign in"}</span>

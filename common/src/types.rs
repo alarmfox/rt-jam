@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -12,17 +11,6 @@ pub struct LoginRequest {
     ))]
     pub username: String,
     pub password: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct LoginResponse {
-    pub id: Uuid,
-    pub email: String,
-    pub first_name: String,
-    pub last_name: String,
-    pub username: String,
-    pub created_at: String,
-    pub updated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Validate)]
@@ -53,14 +41,12 @@ pub struct RegisterRequest {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct RegisterResponse {
+pub struct UserResponse {
     pub id: Uuid,
     pub email: String,
     pub first_name: String,
     pub last_name: String,
     pub username: String,
-    pub created_at: String,
-    pub updated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Validate)]
