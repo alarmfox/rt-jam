@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Context, Result};
 use bytes::Bytes;
-use common::connection_packet::ConnectionPacket;
-use common::packet_wrapper::packet_wrapper::PacketType;
-use common::packet_wrapper::PacketWrapper;
+use common::protos::connection_packet::ConnectionPacket;
+use common::protos::packet_wrapper::packet_wrapper::PacketType;
+use common::protos::packet_wrapper::PacketWrapper;
 use futures::StreamExt;
 use http::Method;
 use protobuf::Message;

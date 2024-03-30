@@ -3,7 +3,7 @@ use std::{cell::RefCell, ops::Deref, rc::Rc};
 use common::types::ChangePasswordRequest;
 use validator::{Validate, ValidationErrors};
 use yew::prelude::*;
-use yew_router::{hooks::use_navigator};
+use yew_router::hooks::use_navigator;
 
 use crate::components::{
     atoms::{form_title::TextTitle, logo::Logo, text_input::TextInput},

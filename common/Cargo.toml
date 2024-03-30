@@ -11,8 +11,4 @@ serde_json = "1.0.114"
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
 validator = { version = "0.16.1", features = ["derive"] }
 time = { version = "0.3.34",  features = ["formatting", "parsing", "serde"]}
-protobuf = "3.3.0"
-
-[build-dependencies]
-protobuf-codegen = "3.3.0"
-protobuf = "3.3.0"
+protobuf = "3.4.0"
