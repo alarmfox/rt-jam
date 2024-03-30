@@ -1,11 +1,12 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::{
-    components::pages::{login::Login, not_found::NotFound, register::Register},
-};
+use crate::components::pages::{login::Login, not_found::NotFound, register::Register};
 
-use super::{layouts::simple::SimpleLayout, pages::{change_password::ChangePassword, home::Home, reset_password::StartReset}};
+use super::{
+    layouts::simple::SimpleLayout,
+    pages::{change_password::ChangePassword, home::Home, reset_password::StartReset},
+};
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
