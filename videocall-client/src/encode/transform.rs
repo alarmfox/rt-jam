@@ -56,7 +56,6 @@ pub fn transform_screen_chunk(
         email: email.to_owned(),
         data: buffer[0..byte_length].to_vec(),
         frame_type: EncodedVideoChunkTypeWrapper(chunk.type_()).to_string(),
-        media_type: MediaType::SCREEN.into(),
         timestamp: chunk.timestamp(),
         video_metadata: Some(VideoMetadata {
             sequence,

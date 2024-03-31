@@ -197,7 +197,7 @@ async fn handle_h3_connection(
                         if parts.len() != 3 {
                             conn.close(Code::H3_REQUEST_REJECTED, "Invalid path wrong length");
                             return Err(anyhow!("Invalid path wrong length"));
-                        } else if parts[0] != &"lobby" {
+                        } else if parts[0] != &"room" {
                             conn.close(Code::H3_REQUEST_REJECTED, "Invalid path wrong prefix");
                             return Err(anyhow!("Invalid path wrong prefix"));
                         }

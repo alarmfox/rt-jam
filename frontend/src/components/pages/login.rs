@@ -1,21 +1,17 @@
 use std::{cell::RefCell, ops::Deref, rc::Rc};
 
-use common::types::{LoginRequest, UserResponse};
+use common::types::LoginRequest;
 use gloo_net::http::Request;
 use validator::{Validate, ValidationErrors};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::console::log_1;
 use yew::prelude::*;
 use yew_router::{components::Link, hooks::use_navigator};
-use yewdux::use_store;
 
-use crate::{
-    components::{
-        atoms::{form_title::TextTitle, logo::Logo, text_error::TextError, text_input::TextInput},
-        pages::classes::{box_div_classes, main_div_classes, submit_button_classes},
-        router::Route,
-    },
-    store::Store,
+use crate::components::{
+    atoms::{form_title::TextTitle, logo::Logo, text_error::TextError, text_input::TextInput},
+    pages::classes::{box_div_classes, main_div_classes, submit_button_classes},
+    router::Route,
 };
 
 fn get_input_callback(
@@ -35,7 +31,6 @@ fn get_input_callback(
 
 #[function_component(Login)]
 pub fn login() -> Html {
-    let (_, dispatch) = use_store::<Store>();
     let navigator = use_navigator().unwrap();
     let form = use_state(|| LoginRequest {
         username: "".into(),
@@ -54,7 +49,6 @@ pub fn login() -> Html {
             match form.validate() {
                 Ok(()) => {
                     let form = form.deref().clone();
-                    let dispatch = dispatch.clone();
                     let navigator = navigator.clone();
                     let error_message = error_message.clone();
                     spawn_local(async move {

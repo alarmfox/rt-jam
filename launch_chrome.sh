@@ -10,7 +10,7 @@ SPKI=$(openssl x509 -inform der -in "$CERTSPATH/localhost.dev.der" -pubkey -noou
 echo "Opening google chrome"
 
 case $(uname) in
-    (*Linux*)  google-chrome-stable --origin-to-force-quic-on=127.0.0.1:4433 --ignore-certificate-errors-spki-list="$SPKI" --enable-logging --v=1 ;;
+    (*Linux*)  chromium --origin-to-force-quic-on=127.0.0.1:4433 --ignore-certificate-errors-spki-list="$SPKI" --enable-logging --v=1 ;;
     (*Darwin*)  open -a "Google Chrome" --args --origin-to-force-quic-on=127.0.0.1:4433 --ignore-certificate-errors-spki-list="$SPKI" --enable-logging --v=1 ;;
 esac
 

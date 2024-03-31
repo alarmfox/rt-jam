@@ -1,10 +1,10 @@
 use super::hash_map_with_ordered_keys::HashMapWithOrderedKeys;
-use log::debug;
-use protobuf::Message;
-use std::{fmt::Display, sync::Arc};
 use common::protos::media_packet::MediaPacket;
 use common::protos::packet_wrapper::packet_wrapper::PacketType;
 use common::protos::{media_packet::media_packet::MediaType, packet_wrapper::PacketWrapper};
+use log::debug;
+use protobuf::Message;
+use std::{fmt::Display, sync::Arc};
 use yew::prelude::Callback;
 
 use crate::crypto::aes::Aes128State;
@@ -16,7 +16,6 @@ pub enum PeerDecodeError {
     AesDecryptError,
     IncorrectPacketType,
     AudioDecodeError,
-    ScreenDecodeError,
     VideoDecodeError,
     NoSuchPeer(String),
     NoMediaType,
@@ -36,7 +35,6 @@ impl Display for PeerDecodeError {
             PeerDecodeError::AesDecryptError => write!(f, "AesDecryptError"),
             PeerDecodeError::IncorrectPacketType => write!(f, "IncorrectPacketType"),
             PeerDecodeError::AudioDecodeError => write!(f, "AudioDecodeError"),
-            PeerDecodeError::ScreenDecodeError => write!(f, "ScreenDecodeError"),
             PeerDecodeError::VideoDecodeError => write!(f, "VideoDecodeError"),
             PeerDecodeError::NoSuchPeer(s) => write!(f, "Peer Not Found: {s}"),
             PeerDecodeError::NoMediaType => write!(f, "No media_type"),
@@ -52,49 +50,34 @@ impl Display for PeerDecodeError {
 pub struct Peer {
     pub audio: AudioPeerDecoder,
     pub video: VideoPeerDecoder,
-    pub screen: VideoPeerDecoder,
     pub email: String,
     pub video_canvas_id: String,
-    pub screen_canvas_id: String,
     pub aes: Option<Aes128State>,
 }
 
 impl Peer {
-    fn new(
-        video_canvas_id: String,
-        screen_canvas_id: String,
-        email: String,
-        aes: Option<Aes128State>,
-    ) -> Self {
-        let (audio, video, screen) = Self::new_decoders(&video_canvas_id, &screen_canvas_id);
+    fn new(video_canvas_id: String, email: String, aes: Option<Aes128State>) -> Self {
+        let (audio, video) = Self::new_decoders(&video_canvas_id);
         Self {
             audio,
             video,
-            screen,
             email,
             video_canvas_id,
-            screen_canvas_id,
             aes,
         }
     }
 
-    fn new_decoders(
-        video_canvas_id: &str,
-        screen_canvas_id: &str,
-    ) -> (AudioPeerDecoder, VideoPeerDecoder, VideoPeerDecoder) {
+    fn new_decoders(video_canvas_id: &str) -> (AudioPeerDecoder, VideoPeerDecoder) {
         (
             AudioPeerDecoder::new(),
             VideoPeerDecoder::new(video_canvas_id),
-            VideoPeerDecoder::new(screen_canvas_id),
         )
     }
 
     fn reset(&mut self) {
-        let (audio, video, screen) =
-            Self::new_decoders(&self.video_canvas_id, &self.screen_canvas_id);
+        let (audio, video) = Self::new_decoders(&self.video_canvas_id);
         self.audio = audio;
         self.video = video;
-        self.screen = screen;
     }
 
     fn decode(
@@ -137,12 +120,6 @@ impl Peer {
                     .decode(&packet)
                     .map_err(|_| PeerDecodeError::AudioDecodeError)?,
             )),
-            MediaType::SCREEN => Ok((
-                media_type,
-                self.screen
-                    .decode(&packet)
-                    .map_err(|_| PeerDecodeError::ScreenDecodeError)?,
-            )),
             MediaType::HEARTBEAT => Ok((
                 media_type,
                 DecodeStatus {
@@ -165,7 +142,6 @@ pub struct PeerDecodeManager {
     connected_peers: HashMapWithOrderedKeys<String, Peer>,
     pub on_first_frame: Callback<(String, MediaType)>,
     pub get_video_canvas_id: Callback<String, String>,
-    pub get_screen_canvas_id: Callback<String, String>,
 }
 
 impl PeerDecodeManager {
@@ -174,7 +150,6 @@ impl PeerDecodeManager {
             connected_peers: HashMapWithOrderedKeys::new(),
             on_first_frame: Callback::noop(),
             get_video_canvas_id: Callback::from(|key| format!("video-{}", &key)),
-            get_screen_canvas_id: Callback::from(|key| format!("screen-{}", &key)),
         }
     }
 
@@ -213,7 +188,6 @@ impl PeerDecodeManager {
             email.to_owned(),
             Peer::new(
                 self.get_video_canvas_id.emit(email.to_owned()),
-                self.get_screen_canvas_id.emit(email.to_owned()),
                 email.to_owned(),
                 aes,
             ),

@@ -22,9 +22,6 @@ pub struct VideoCallClientOptions {
     /// `true` to use end-to-end encription; `false` to send data unencrypted
     pub enable_e2ee: bool,
 
-    /// `true` to use webtransport, `false` to use websocket
-    pub enable_webtransport: bool,
-
     /// Callback will be called as `callback(peer_userid)` when a new peer is added
     pub on_peer_added: Callback<String>,
 
@@ -35,16 +32,9 @@ pub struct VideoCallClientOptions {
     /// `HtmlCanvasElement` into which the peer video should be rendered
     pub get_peer_video_canvas_id: Callback<String, String>,
 
-    /// Callback will be called as `callback(peer_userid)` and must return the DOM id of the
-    /// `HtmlCanvasElement` into which the peer screen image should be rendered
-    pub get_peer_screen_canvas_id: Callback<String, String>,
-
     /// The current client's userid.  This userid will appear as this client's `peer_userid` in the
     /// remote peers' clients.
     pub userid: String,
-
-    /// The url to which WebSocket connections should be made
-    pub websocket_url: String,
 
     /// The url to which WebTransport connections should be made
     pub webtransport_url: String,
@@ -134,7 +124,6 @@ impl VideoCallClient {
     pub fn connect(&mut self) -> anyhow::Result<()> {
         let options = ConnectOptions {
             userid: self.options.userid.clone(),
-            websocket_url: self.options.websocket_url.clone(),
             webtransport_url: self.options.webtransport_url.clone(),
             on_inbound_media: {
                 let inner = Rc::downgrade(&self.inner);
@@ -170,17 +159,12 @@ impl VideoCallClient {
             on_connection_lost: self.options.on_connection_lost.clone(),
         };
         info!(
-            "webtransport connect = {}",
-            self.options.enable_webtransport
-        );
-        info!(
             "end to end encryption enabled = {}",
             self.options.enable_e2ee
         );
 
         let mut borrowed = self.inner.try_borrow_mut()?;
         borrowed.connection.replace(Connection::connect(
-            self.options.enable_webtransport,
             options,
             self.aes.clone(),
         )?);
@@ -191,7 +175,6 @@ impl VideoCallClient {
         let mut peer_decode_manager = PeerDecodeManager::new();
         peer_decode_manager.on_first_frame = opts.on_peer_first_frame.clone();
         peer_decode_manager.get_video_canvas_id = opts.get_peer_video_canvas_id.clone();
-        peer_decode_manager.get_screen_canvas_id = opts.get_peer_screen_canvas_id.clone();
         peer_decode_manager
     }
 
@@ -222,21 +205,6 @@ impl VideoCallClient {
         }
     }
 
-    /// Hacky function that returns true if the given peer has yet to send a frame of screen share.
-    ///
-    /// No reason for this function to exist, it should be deducible from the
-    /// [`options.on_peer_first_frame(key, MediaType::Screen)`](VideoCallClientOptions::on_peer_first_frame)
-    /// callback.   Or if polling is really necessary, instead of being hardwired for screen, it'd
-    /// be more elegant to at least pass a `MediaType`.
-    ///
-    pub fn is_awaiting_peer_screen_frame(&self, key: &String) -> bool {
-        if let Ok(inner) = self.inner.try_borrow() {
-            if let Some(peer) = inner.peer_decode_manager.get(key) {
-                return peer.screen.is_waiting_for_keyframe();
-            }
-        }
-        false
-    }
 
     pub(crate) fn aes(&self) -> Rc<Aes128State> {
         self.aes.clone()

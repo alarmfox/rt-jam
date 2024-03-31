@@ -1,11 +1,12 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
+use yewdux::use_store;
 
-use crate::components::pages::{login::Login, not_found::NotFound, register::Register};
+use crate::{components::pages::{home::Home, login::Login, register::Register}, store::Store};
 
 use super::{
     layouts::simple::SimpleLayout,
-    pages::{change_password::ChangePassword, home::Home, reset_password::StartReset},
+    pages::{change_password::ChangePassword, reset_password::StartReset},
 };
 
 #[derive(Clone, Routable, PartialEq)]
@@ -31,11 +32,13 @@ pub enum Route {
 
 pub fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => html! {
-            <SimpleLayout>
-                <Home />
-            </SimpleLayout>
-        },
+        Route::Home => {
+            html! {
+                <SimpleLayout>
+                    <Home />
+                </SimpleLayout>
+            }
+        }
         Route::Login => html! {
             <SimpleLayout>
                 <Login/>
@@ -59,7 +62,7 @@ pub fn switch(routes: Route) -> Html {
         Route::NotFound => {
             html! {
                 <SimpleLayout>
-                    <NotFound />
+                    <h1>{"Not found"}</h1>
                 </SimpleLayout>
             }
         }

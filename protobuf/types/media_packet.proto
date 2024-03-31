@@ -4,7 +4,6 @@ message MediaPacket {
   enum MediaType {
     VIDEO = 0;
     AUDIO = 1;
-    SCREEN = 2;
     HEARTBEAT = 3;
   }
   MediaType media_type = 1;

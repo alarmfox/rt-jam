@@ -32,7 +32,6 @@ pub struct Connection {
 
 impl Connection {
     pub fn connect(
-        webtransport: bool,
         options: ConnectOptions,
         aes: Rc<Aes128State>,
     ) -> anyhow::Result<Self> {
