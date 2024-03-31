@@ -87,7 +87,7 @@ impl Component for DeviceSelector {
         }
 
         html! {
-            <div class={"device-selector-wrapper"}>
+            <div>
                 <label for={"audio-select"}>{ "Audio:" }</label>
                 <select id={"audio-select"} class={"device-selector"}
                         onchange={ctx.link().callback(|e: Event| Msg::OnMicSelect(selection(e)))}

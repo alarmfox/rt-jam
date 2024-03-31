@@ -6,7 +6,7 @@ use yew::prelude::*;
 use yew_router::hooks::use_navigator;
 use yewdux::prelude::*;
 
-use crate::{components::{organisms::session::Session, router::Route}, store::{Store}};
+use crate::{components::{atoms::header::Header, organisms::session::Session, router::Route}, store::Store};
 
 #[function_component(Home)]
 pub fn home() -> Html {
@@ -34,6 +34,7 @@ pub fn home() -> Html {
     });
     html! {
         if let Some(user) = user {
+            <Header />
             <h1>{user.username}</h1>
         } else {
             <h1>{"loading..."}</h1>

@@ -1,4 +1,5 @@
 pub mod class;
+pub mod header;
 pub mod device_selector;
 pub mod footer;
 pub mod form_title;
