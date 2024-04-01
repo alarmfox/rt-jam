@@ -9,9 +9,7 @@ pub fn main_div_classes() -> Classes {
         "items-center",
         "justify-center",
         "px-6",
-        "py-8",
         "mx-auto",
-        "lg:py-0"
     )
 }
 

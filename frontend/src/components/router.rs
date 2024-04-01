@@ -1,8 +1,7 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
-use yewdux::use_store;
 
-use crate::{components::pages::{home::Home, login::Login, register::Register}, store::Store};
+use crate::components::pages::{home::Home, login::Login, register::Register};
 
 use super::{
     layouts::simple::SimpleLayout,
@@ -26,6 +25,9 @@ pub enum Route {
     #[at("/start-reset")]
     StartReset,
 
+    #[at("/session/:id")]
+    Session { id: String },
+
     #[not_found]
     #[at("/not-found")]
     NotFound,
@@ -38,6 +40,11 @@ pub fn switch(routes: Route) -> Html {
                 <SimpleLayout>
                     <Home />
                 </SimpleLayout>
+            }
+        }
+        Route::Session { id } => {
+            html! {
+                <p>{"session: "} {id} </p>
             }
         }
         Route::Login => html! {

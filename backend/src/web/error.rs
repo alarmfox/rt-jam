@@ -38,6 +38,9 @@ pub enum Error {
     #[error(transparent)]
     #[serde(skip)]
     AxumJsonRejection(#[from] JsonRejection),
+
+    NotAllowed,
+    NotFound
 }
 
 // region:    --- Axum IntoResponse
@@ -83,6 +86,10 @@ impl Error {
 
             // -- Auth
             CtxExt(_) => (StatusCode::FORBIDDEN, ClientError::NO_AUTH),
+            NotAllowed => (StatusCode::FORBIDDEN, ClientError::NOT_ALLOWED),
+
+            // -- Model
+            NotFound => (StatusCode::NOT_FOUND, ClientError::NOT_FOUND),
 
             // -- Fallback.
             _ => (
@@ -100,5 +107,7 @@ pub enum ClientError {
     LOGIN_FAIL,
     NO_AUTH,
     SERVICE_ERROR,
+    NOT_ALLOWED,
+    NOT_FOUND,
 }
 // endregion: --- Client Error

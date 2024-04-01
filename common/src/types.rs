@@ -63,3 +63,14 @@ pub struct StartResetRequest{
     #[validate(email(message = "Invalid email"))]
     pub email: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Validate)]
+pub struct CreateRoomRequest {
+    pub name: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RoomResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub owner: String,
+}

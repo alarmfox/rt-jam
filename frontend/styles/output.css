@@ -947,10 +947,6 @@ input[type="range"]::-ms-fill-lower {
   z-index: 50;
 }
 
-.m-4 {
-  margin: 1rem;
-}
-
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
@@ -1012,14 +1008,6 @@ input[type="range"]::-ms-fill-lower {
   margin-top: auto;
 }
 
-.ml-1 {
-  margin-left: 0.25rem;
-}
-
-.mr-1 {
-  margin-right: 0.25rem;
-}
-
 .block {
   display: block;
 }
@@ -1030,10 +1018,6 @@ input[type="range"]::-ms-fill-lower {
 
 .flex {
   display: flex;
-}
-
-.hidden {
-  display: none;
 }
 
 .h-2 {
@@ -1245,6 +1229,11 @@ input[type="range"]::-ms-fill-lower {
   background-color: rgb(249 250 251 / var(--tw-bg-opacity));
 }
 
+.bg-green-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 250 247 / var(--tw-bg-opacity));
+}
+
 .bg-primary-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(37 99 235 / var(--tw-bg-opacity));
@@ -1258,11 +1247,6 @@ input[type="range"]::-ms-fill-lower {
 .bg-white {
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
-}
-
-.bg-green-50 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(243 250 247 / var(--tw-bg-opacity));
 }
 
 .p-2 {
@@ -1283,10 +1267,6 @@ input[type="range"]::-ms-fill-lower {
 
 .p-6 {
   padding: 1.5rem;
-}
-
-.p-1 {
-  padding: 0.25rem;
 }
 
 .px-3 {
@@ -1404,6 +1384,11 @@ input[type="range"]::-ms-fill-lower {
   color: rgb(17 24 39 / var(--tw-text-opacity));
 }
 
+.text-green-800 {
+  --tw-text-opacity: 1;
+  color: rgb(3 84 63 / var(--tw-text-opacity));
+}
+
 .text-primary-600 {
   --tw-text-opacity: 1;
   color: rgb(37 99 235 / var(--tw-text-opacity));
@@ -1422,11 +1407,6 @@ input[type="range"]::-ms-fill-lower {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
-}
-
-.text-green-800 {
-  --tw-text-opacity: 1;
-  color: rgb(3 84 63 / var(--tw-text-opacity));
 }
 
 .opacity-25 {
@@ -1543,6 +1523,11 @@ input[type="range"]::-ms-fill-lower {
   color: rgb(156 163 175 / var(--tw-text-opacity));
 }
 
+:is(.dark .dark\:text-green-400) {
+  --tw-text-opacity: 1;
+  color: rgb(49 196 141 / var(--tw-text-opacity));
+}
+
 :is(.dark .dark\:text-primary-500) {
   --tw-text-opacity: 1;
   color: rgb(59 130 246 / var(--tw-text-opacity));
@@ -1556,11 +1541,6 @@ input[type="range"]::-ms-fill-lower {
 :is(.dark .dark\:text-white) {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
-}
-
-:is(.dark .dark\:text-green-400) {
-  --tw-text-opacity: 1;
-  color: rgb(49 196 141 / var(--tw-text-opacity));
 }
 
 :is(.dark .dark\:placeholder-gray-400)::-moz-placeholder {

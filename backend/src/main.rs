@@ -22,9 +22,13 @@ use web::{
     routes_login,
 };
 
-use crate::web::{
-    webtransport::{self, Certs},
-    SESSION_COOKIE_KEY,
+use crate::{
+    service::room,
+    web::{
+        routes_room,
+        webtransport::{self, Certs},
+        SESSION_COOKIE_KEY,
+    },
 };
 
 #[tokio::main]
@@ -50,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let auth_service = auth::Service::new(db.clone(), email_service);
     let session_service = session::Service::new(db.clone());
+    let room_service = room::Service::new(db.clone());
 
     let key = general_purpose::STANDARD
         .decode("mN1GR7dsQ+Bj8NFIA+n/uvSbBcdyvHnVdFuJSJrQJ3g2/8gGYaATt3Wv7j3xKpD07652no/eddRdD7sJTVjg4w==")
@@ -72,9 +77,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
-    let app = Router::new().route("/test", get(|| async { "Hello world" }));
 
-    let app = app
+    let app = Router::new()
+        .nest("/api/rooms", routes_room::router(room_service))
         .layer(middleware::from_fn(mw_ctx_require))
         .nest(
             "/api/auth",
