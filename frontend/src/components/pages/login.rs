@@ -9,7 +9,10 @@ use yew::prelude::*;
 use yew_router::{components::Link, hooks::use_navigator};
 
 use crate::components::{
-    atoms::{form_title::TextTitle, logo::Logo, text_error::TextError, text_input::TextInput},
+    atoms::{
+        form_title::TextTitle, logo::Logo, spinner::Spinner, text_error::TextError,
+        text_input::TextInput,
+    },
     pages::classes::{box_div_classes, main_div_classes, submit_button_classes},
     router::Route,
 };
@@ -29,6 +32,12 @@ fn get_input_callback(
     })
 }
 
+struct FormState {
+    pub is_loading: bool,
+    pub is_error: bool,
+    pub message: Option<AttrValue>,
+}
+
 #[function_component(Login)]
 pub fn login() -> Html {
     let navigator = use_navigator().unwrap();
@@ -36,13 +45,17 @@ pub fn login() -> Html {
         username: "".into(),
         password: "".into(),
     });
+    let form_state = use_state(|| FormState {
+        is_loading: false,
+        is_error: false,
+        message: None,
+    });
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
-    let error_message = use_state(|| None::<AttrValue>);
 
     let onsubmit = {
         let form = form.clone();
         let validation_errors = validation_errors.clone();
-        let error_message = error_message.clone();
+        let form_state = form_state.clone();
         Callback::from(move |e: SubmitEvent| {
             e.prevent_default();
 
@@ -50,8 +63,13 @@ pub fn login() -> Html {
                 Ok(()) => {
                     let form = form.deref().clone();
                     let navigator = navigator.clone();
-                    let error_message = error_message.clone();
+                    let form_state = form_state.clone();
                     spawn_local(async move {
+                        form_state.set(FormState {
+                            is_error: false,
+                            message: None,
+                            is_loading: true,
+                        });
                         let body = serde_json::to_string(&form).unwrap();
                         match Request::post("/api/auth/sign-in")
                             .header("Content-Type", "application/json")
@@ -62,8 +80,17 @@ pub fn login() -> Html {
                             Ok(res) => {
                                 if res.ok() {
                                     navigator.replace(&Route::Home);
+                                    form_state.set(FormState {
+                                        is_error: false,
+                                        message: None,
+                                        is_loading: false,
+                                    });
                                 } else {
-                                    error_message.set(Some("Invalid credentials".into()));
+                                    form_state.set(FormState {
+                                        is_error: true,
+                                        message: Some("Invalid credentials".into()),
+                                        is_loading: false,
+                                    });
                                 }
                             }
                             // network error
@@ -130,12 +157,19 @@ pub fn login() -> Html {
                     <div class={"flex items-center justify-between"}>
                         <Link<Route> to={Route::StartReset} classes={"text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"}>{"Forgot password?"}</Link<Route>>
                     </div>
-                    <TextError error={error_message.deref().clone()} />
+                    if let Some(res) = &form_state.deref().message {
+                        if form_state.is_error {
+                            <TextError error={res.clone()}/>
+                        }
+                    }
                     <button type={"submit"} class={submit_button_classes()}>
                         <div class={"flex justify-center"}>
-                            <span>{"Sign in"}</span>
+                            <span>{"Login"}</span>
+                            if form_state.clone().deref().is_loading {
+                                <Spinner />
+                            }
                         </div>
-                    </button>
+                       </button>
                 </form>
                 <p class={"text-sm font-light text-gray-500 dark:text-gray-400"}>
                     {"Don’t have an account yet? "} <Link<Route> to={Route::Register} classes={"font-medium text-primary-600 hover:underline dark:text-primary-500"}>{"Sign up"}</Link<Route>>

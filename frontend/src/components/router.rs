@@ -26,6 +26,7 @@ pub enum Route {
     #[at("/start-reset")]
     StartReset,
 
+    #[not_found]
     #[at("/not-found")]
     NotFound,
 }

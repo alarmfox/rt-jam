@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         smtp_user: "info@capass.org".into(),
         smtp_pass: "@info-Alarmfox97".into(),
         smtp_from: "info@capass.org".into(),
-        app_url: "http://localhost:3000".into(),
+        app_url: "http://localhost:8080".into(),
     })
     .await?;
 

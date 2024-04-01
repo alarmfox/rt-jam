@@ -72,7 +72,7 @@ impl Service {
         token: &str,
         user: &User,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let link = format!("{}/auth/change-password?token={}", self.app_url, token);
+        let link = format!("{}/change-password?token={}", self.app_url, token);
         let subject = format!("Welcome, {}", user.first_name);
 
         let template = ChangePassword {
@@ -102,7 +102,7 @@ impl Service {
         token: &str,
         user: &User,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let link = format!("{}/auth/change-password?token={}", self.app_url, token);
+        let link = format!("{}/change-password?token={}", self.app_url, token);
         let subject = format!("Your reset link, {}", user.first_name);
 
         let template = ChangePassword {
