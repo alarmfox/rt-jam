@@ -6,3 +6,4 @@ pub mod create_session;
 pub mod login;
 pub mod register;
 pub mod reset_password;
+pub mod session;

@@ -1,3 +1,4 @@
+use common::protos::packet_wrapper::PacketWrapper;
 use gloo_utils::window;
 use js_sys::Array;
 use js_sys::Boolean;
@@ -5,11 +6,12 @@ use js_sys::JsString;
 use js_sys::Reflect;
 use log::error;
 use std::sync::atomic::Ordering;
-use common::protos::packet_wrapper::PacketWrapper;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::console::log;
+use web_sys::console::log_1;
 use web_sys::AudioData;
 use web_sys::AudioEncoder;
 use web_sys::AudioEncoderConfig;
@@ -98,7 +100,7 @@ impl MicrophoneEncoder {
         let userid = client.userid().clone();
         let aes = client.aes();
         let audio_output_handler = {
-            let mut buffer: [u8; 100000] = [0; 100000];
+            let mut buffer: [u8; 4096] = [0; 4096];
             let mut sequence = 0;
             Box::new(move |chunk: JsValue| {
                 let chunk = web_sys::EncodedAudioChunk::from(chunk);
@@ -157,6 +159,8 @@ impl MicrophoneEncoder {
             audio_encoder_config.bitrate(AUDIO_BITRATE);
             audio_encoder_config.sample_rate(AUDIO_SAMPLE_RATE);
             audio_encoder_config.number_of_channels(AUDIO_CHANNELS);
+            let ok = AudioEncoder::is_config_supported(&audio_encoder_config);
+            log_1(&ok.js_typeof());
             audio_encoder.configure(&audio_encoder_config);
 
             let audio_processor =
@@ -164,6 +168,7 @@ impl MicrophoneEncoder {
                     &audio_track.clone().unchecked_into::<MediaStreamTrack>(),
                 ))
                 .unwrap();
+            log_1(&"audio encoder configured".into());
             let audio_reader = audio_processor
                 .readable()
                 .get_reader()
@@ -179,6 +184,7 @@ impl MicrophoneEncoder {
                         let audio_track = audio_track.clone().unchecked_into::<MediaStreamTrack>();
                         audio_track.stop();
                         audio_encoder.close();
+                        log_1(&"closing".into());
                         return;
                     }
                     match JsFuture::from(audio_reader.read()).await {
@@ -186,6 +192,7 @@ impl MicrophoneEncoder {
                             let audio_frame = Reflect::get(&js_frame, &JsString::from("value"))
                                 .unwrap()
                                 .unchecked_into::<AudioData>();
+                            log_1(&"got audio data".into());
                             audio_encoder.encode(&audio_frame);
                             audio_frame.close();
                         }

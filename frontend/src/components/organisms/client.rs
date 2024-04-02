@@ -53,14 +53,12 @@ impl From<MeetingAction> for Msg {
 
 #[derive(Properties, Debug, PartialEq)]
 pub struct AttendantsComponentProps {
-    #[prop_or_default]
     pub id: String,
 
-    #[prop_or_default]
     pub username: String,
 }
 
-pub struct Session {
+pub struct Client {
     pub client: VideoCallClient,
     pub media_device_access: MediaDeviceAccess,
     pub mic_enabled: bool,
@@ -68,7 +66,7 @@ pub struct Session {
     pub error: Option<String>,
 }
 
-impl Session {
+impl Client {
     fn create_video_call_client(ctx: &Context<Self>) -> VideoCallClient {
         let username = ctx.props().username.clone();
         let id = ctx.props().id.clone();
@@ -115,7 +113,7 @@ impl Session {
     }
 }
 
-impl Component for Session {
+impl Component for Client {
     type Message = Msg;
     type Properties = AttendantsComponentProps;
 
@@ -190,7 +188,7 @@ impl Component for Session {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let email = ctx.props().username.clone();
+        let username = ctx.props().username.clone();
         let media_access_granted = self.media_device_access.is_granted();
         let rows: Vec<VNode> = self
             .client
@@ -223,17 +221,17 @@ impl Component for Session {
                 { rows }
                 {
                         html! {
-                            <nav class="host">
-                                <div class="controls">
+                            <nav class="">
+                                <div class="">
                                     <button
-                                        class="bg-yew-blue p-2 rounded-md text-white"
+                                        class=" p-2 rounded-md "
                                         onclick={ctx.link().callback(|_| MeetingAction::ToggleVideoOnOff)}>
                                         { if !self.video_enabled { "Start Video"} else { "Stop Video"} }
                                     </button>
                                     <button
                                         class="bg-yew-blue p-2 rounded-md text-white"
                                         onclick={ctx.link().callback(|_| MeetingAction::ToggleMicMute)}>
-                                        { if !self.mic_enabled { "Unmute"} else { "Mute"} }
+                                        { if !self.mic_enabled { "Start playing"} else { "Stop playing"} }
                                         </button>
                                 </div>
                                 {
@@ -243,7 +241,7 @@ impl Component for Session {
                                         html! {<></>}
                                     }
                                 }
-                                <h4 class="floating-name">{email}</h4>
+                                <h4 class="">{username}</h4>
 
                                 {if !self.client.is_connected() {
                                     html! {<h4>{"Connecting"}</h4>}
@@ -255,6 +253,7 @@ impl Component for Session {
                         }
 
                 }
+            //<AudioVisualizer />
             </div>
         }
     }
@@ -305,5 +304,12 @@ fn toggle_pinned_div(div_id: &str) {
             // else remove it
             div.class_list().remove_1("grid-item-pinned").unwrap();
         }
+    }
+}
+
+#[function_component(AudioVisualizer)]
+fn audio_visualizer() -> Html {
+    html! {
+        <h1>{"Audio visualizer"}</h1>
     }
 }

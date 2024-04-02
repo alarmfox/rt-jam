@@ -88,8 +88,8 @@ impl Component for DeviceSelector {
 
         html! {
             <div>
-                <label for={"audio-select"}>{ "Audio:" }</label>
-                <select id={"audio-select"} class={"device-selector"}
+                <label for={"audio-select"}>{ "Audio src: " }</label>
+                <select id={"audio-select"} class={"text-black"}
                         onchange={ctx.link().callback(|e: Event| Msg::OnMicSelect(selection(e)))}
                 >
                     { for mics.iter().map(|device| html! {
@@ -99,8 +99,8 @@ impl Component for DeviceSelector {
                     }) }
                 </select>
                 <br/>
-                <label for={"video-select"}>{ "Video:" }</label>
-                <select id={"video-select"} class={"device-selector"}
+                <label for={"video-select"}>{ "Video src: " }</label>
+                <select id={"video-select"} class={"text-black"}
                         onchange={ctx.link().callback(|e:Event| Msg::OnCameraSelect(selection(e))) }
                 >
                     { for cameras.iter().map(|device| html! {

@@ -43,39 +43,6 @@ pub fn transform_video_chunk(
     }
 }
 
-pub fn transform_screen_chunk(
-    chunk: EncodedVideoChunk,
-    sequence: u64,
-    buffer: &mut [u8],
-    email: &str,
-    aes: Rc<Aes128State>,
-) -> PacketWrapper {
-    let byte_length = chunk.byte_length() as usize;
-    chunk.copy_to_with_u8_array(buffer);
-    let mut media_packet: MediaPacket = MediaPacket {
-        email: email.to_owned(),
-        data: buffer[0..byte_length].to_vec(),
-        frame_type: EncodedVideoChunkTypeWrapper(chunk.type_()).to_string(),
-        timestamp: chunk.timestamp(),
-        video_metadata: Some(VideoMetadata {
-            sequence,
-            ..Default::default()
-        })
-        .into(),
-        ..Default::default()
-    };
-    if let Some(duration0) = chunk.duration() {
-        media_packet.duration = duration0;
-    }
-    let data = media_packet.write_to_bytes().unwrap();
-    let data = aes.encrypt(&data).unwrap();
-    PacketWrapper {
-        data,
-        email: media_packet.email,
-        packet_type: PacketType::MEDIA.into(),
-        ..Default::default()
-    }
-}
 
 pub fn transform_audio_chunk(
     chunk: &EncodedAudioChunk,

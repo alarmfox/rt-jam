@@ -61,7 +61,7 @@ impl MediaDeviceAccess {
                 }
                 Err(_) => on_denied.emit(()),
             }
-        });
+       });
     }
 
     async fn request_permissions() -> anyhow::Result<(), JsValue> {

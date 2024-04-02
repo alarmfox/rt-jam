@@ -4,8 +4,9 @@ use yew_router::prelude::*;
 use crate::components::pages::{home::Home, login::Login, register::Register};
 
 use super::{
-    layouts::simple::SimpleLayout,
-    pages::{change_password::ChangePassword, create_session::CreateRoom, reset_password::StartReset},
+    layouts::simple::SimpleLayout, pages::{
+        change_password::ChangePassword, create_session::CreateRoom, reset_password::StartReset, session::Session,
+    }
 };
 
 #[derive(Clone, Routable, PartialEq)]
@@ -38,24 +39,22 @@ pub enum Route {
 
 pub fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => {
-            html! {
-                <SimpleLayout>
-                    <Home />
-                </SimpleLayout>
-            }
-        }
-        Route::Session { id } => {
-            html! {
-                <p>{"session: "} {id} </p>
-            }
-        }
+        Route::Home => html! {
+            <SimpleLayout>
+                <Home />
+            </SimpleLayout>
+        },
+        Route::Session { id } => html! {
+            <SimpleLayout>
+                <Session {id}/>
+            </SimpleLayout>
+        },
         Route::Login => html! {
             <SimpleLayout>
                 <Login/>
             </SimpleLayout>
         },
-        Route::CreateRoom=> html! {
+        Route::CreateRoom => html! {
             <SimpleLayout>
                 <CreateRoom/>
             </SimpleLayout>
