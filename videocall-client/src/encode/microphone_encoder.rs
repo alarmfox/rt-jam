@@ -124,6 +124,10 @@ impl MicrophoneEncoder {
             let mut constraints = MediaStreamConstraints::new();
             let mut media_info = web_sys::MediaTrackConstraints::new();
             media_info.device_id(&device_id.into());
+            media_info.channel_count(&"2".into());
+            media_info.auto_gain_control(&"false".into());
+            media_info.echo_cancellation(&"false".into());
+            media_info.noise_suppression(&"false".into());
 
             constraints.audio(&media_info.into());
             constraints.video(&Boolean::from(false));
@@ -160,7 +164,7 @@ impl MicrophoneEncoder {
             audio_encoder_config.sample_rate(AUDIO_SAMPLE_RATE);
             audio_encoder_config.number_of_channels(AUDIO_CHANNELS);
             let ok = AudioEncoder::is_config_supported(&audio_encoder_config);
-            log_1(&ok.js_typeof());
+            log_1(&ok.to_string().js_typeof());
             audio_encoder.configure(&audio_encoder_config);
 
             let audio_processor =
