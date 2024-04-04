@@ -1024,6 +1024,14 @@ input[type="range"]::-ms-fill-lower {
   display: flex;
 }
 
+.contents {
+  display: contents;
+}
+
+.hidden {
+  display: none;
+}
+
 .h-2 {
   height: 0.5rem;
 }

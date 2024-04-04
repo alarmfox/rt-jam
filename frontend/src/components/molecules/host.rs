@@ -25,6 +25,7 @@ pub struct Host {
     pub microphone: MicrophoneEncoder,
     pub mic_enabled: bool,
     pub video_enabled: bool,
+    pub on_audio_src_changed: Callback<String>
 }
 
 #[derive(Properties, Debug, PartialEq)]
@@ -37,6 +38,8 @@ pub struct MeetingProps {
     pub mic_enabled: bool,
 
     pub video_enabled: bool,
+
+    pub on_audio_src_changed: Callback<String>
 }
 
 impl Component for Host {
@@ -50,6 +53,7 @@ impl Component for Host {
             microphone: MicrophoneEncoder::new(client.clone()),
             mic_enabled: ctx.props().mic_enabled,
             video_enabled: ctx.props().video_enabled,
+            on_audio_src_changed: ctx.props().on_audio_src_changed.clone(),
         }
     }
 
@@ -104,13 +108,14 @@ impl Component for Host {
                 true
             }
             Msg::AudioDeviceChanged(audio) => {
-                if self.microphone.select(audio) {
+                if self.microphone.select(audio.clone()) {
                     let link = ctx.link().clone();
                     let timeout = Timeout::new(1000, move || {
                         link.send_message(Msg::EnableMicrophone(true));
                     });
                     timeout.forget();
                 }
+                    self.on_audio_src_changed.emit(audio);
                 false
             }
             Msg::VideoDeviceChanged(video) => {

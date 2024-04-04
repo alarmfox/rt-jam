@@ -10,7 +10,6 @@ use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::console::log;
 use web_sys::console::log_1;
 use web_sys::AudioData;
 use web_sys::AudioEncoder;

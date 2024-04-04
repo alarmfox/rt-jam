@@ -1,18 +1,24 @@
+use crate::components::molecules::host::Host;
+use crate::components::pages::icons::push_pin::PushPinIcon;
+use crate::utils::animation;
+use crate::utils::animation::request_animation_frame;
+use crate::WEBTRANSPORT_HOST;
 use common::protos::media_packet::media_packet::MediaType;
 use log::warn;
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::rc::Rc;
 use videocall_client::{MediaDeviceAccess, VideoCallClient, VideoCallClientOptions};
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::console::log_1;
 use web_sys::*;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew::{html, Component, Context, Html};
 use yew_hooks::use_effect_update_with_deps;
-
-use crate::components::molecules::host::Host;
-use crate::components::pages::icons::push_pin::PushPinIcon;
-use crate::WEBTRANSPORT_HOST;
 
 #[derive(Debug)]
 pub enum WsAction {
@@ -37,6 +43,7 @@ pub enum Msg {
     MeetingAction(MeetingAction),
     OnPeerAdded(String),
     OnFirstFrame((String, MediaType)),
+    OnChangeMic(String),
 }
 
 impl From<WsAction> for Msg {
@@ -64,6 +71,7 @@ pub struct Client {
     pub mic_enabled: bool,
     pub video_enabled: bool,
     pub error: Option<String>,
+    pub audio_id: Option<String>,
 }
 
 impl Client {
@@ -124,6 +132,7 @@ impl Component for Client {
             mic_enabled: false,
             video_enabled: false,
             error: None,
+            audio_id: None,
         }
     }
 
@@ -184,6 +193,10 @@ impl Component for Client {
                 }
                 true
             }
+            Msg::OnChangeMic(id) => {
+                self.audio_id = Some(id);
+                true
+            }
         }
     }
 
@@ -236,7 +249,7 @@ impl Component for Client {
                                 </div>
                                 {
                                     if media_access_granted {
-                                        html! {<Host client={self.client.clone()}  mic_enabled={self.mic_enabled} video_enabled={self.video_enabled} />}
+                                        html! {<Host on_audio_src_changed={ctx.link().callback(|s| Msg::OnChangeMic(s))} client={self.client.clone()}  mic_enabled={self.mic_enabled} video_enabled={self.video_enabled} />}
                                     } else {
                                         html! {<></>}
                                     }
@@ -253,7 +266,11 @@ impl Component for Client {
                         }
 
                 }
-            //<AudioVisualizer />
+                if let Some(id) = &self.audio_id {
+                    <AudioVisualizer audio_id={id.clone()}/>
+                } else {
+                    <h1>{"no audio id"}</h1>
+                    }
             </div>
         }
     }
@@ -307,9 +324,106 @@ fn toggle_pinned_div(div_id: &str) {
     }
 }
 
+/// Actual canvas height in pixels
+const AUDIO_OUPTUT_VISUALIZATION_HEIGHT: u32 = 128;
+
+/// Actual maximum canvas width in pixels
+const AUDIO_OUPTUT_VISUALIZATION_WIDTH: u32 = 900;
+
+#[derive(Properties, PartialEq)]
+struct AudioVisualizerProps {
+    audio_id: String,
+}
+
 #[function_component(AudioVisualizer)]
-fn audio_visualizer() -> Html {
+fn audio_visualizer(AudioVisualizerProps { audio_id }: &AudioVisualizerProps) -> Html {
+    let audio_id = audio_id.clone();
+    let audio_id_clone = audio_id.clone();
+    let canvas_ref = use_node_ref();
+    {
+        let canvas_ref = canvas_ref.clone();
+        let audio_id = audio_id.clone();
+        use_effect_update_with_deps(
+            move |_| {
+                let canvas_ref = canvas_ref.clone();
+                let audio_id = audio_id.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let audio_context = AudioContext::new().unwrap();
+                    let audio_id = audio_id.clone();
+                    let audio_analyzer = audio_context.create_analyser().unwrap();
+                    let navigator = gloo_utils::window().navigator();
+                    let media_devices = navigator.media_devices().unwrap();
+                    let mut constraints = MediaStreamConstraints::new();
+                    let mut media_info = web_sys::MediaTrackConstraints::new();
+                    media_info.device_id(&audio_id.into());
+                    media_info.channel_count(&"2".into());
+                    media_info.auto_gain_control(&"false".into());
+                    media_info.echo_cancellation(&"false".into());
+                    media_info.noise_suppression(&"false".into());
+
+                    constraints.audio(&media_info.into());
+                    constraints.video(&js_sys::Boolean::from(false));
+                    let devices_query = media_devices
+                        .get_user_media_with_constraints(&constraints)
+                        .unwrap();
+                    let device = JsFuture::from(devices_query)
+                        .await
+                        .unwrap()
+                        .unchecked_into::<MediaStream>();
+                    let src = audio_context.create_media_stream_source(&device).unwrap();
+                    src.connect_with_audio_node(&audio_analyzer);
+                    audio_analyzer.set_fft_size(2048);
+
+                    let buffer_length = audio_analyzer.frequency_bin_count();
+                    let mut data_array = vec![0u8; buffer_length as usize];
+
+                    let canvas: HtmlCanvasElement = canvas_ref.cast().unwrap();
+                    let ctx: CanvasRenderingContext2d = canvas
+                        .get_context("2d")
+                        .expect("2D Canvas should be supported")
+                        .unwrap()
+                        .dyn_into()
+                        .unwrap();
+
+
+                    let f = Rc::new(RefCell::new(None));
+                    let g = f.clone();
+
+                    ctx.set_fill_style(&JsValue::from_str("rgb(31, 159, 209)"));
+                    *std::cell::RefCell::<_>::borrow_mut(&g) =
+                        Some(Closure::wrap(Box::new(move || {
+                            audio_analyzer.get_byte_frequency_data(&mut data_array);
+
+                            ctx.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+                            let bar_width = (canvas.width() as f64) / buffer_length as f64;
+                            let mut x = 0.0;
+                            for &v in data_array.iter() {
+                                let bar_height = (v as f64) / 255.0 * canvas.height() as f64;
+                                ctx.set_fill_style(&JsValue::from_str("rgb(0, 50, 255)")); // Change color if needed
+                                ctx.fill_rect(
+                                    x,
+                                    canvas.height() as f64 - bar_height,
+                                    bar_width,
+                                    bar_height,
+                                );
+                                x += bar_width + 1.0; // 1px gap between bars
+                            }
+
+                            // Request the next frame
+                            request_animation_frame(f.borrow().as_ref().unwrap());
+                        })
+                            as Box<dyn FnMut()>));
+                    request_animation_frame(g.borrow().as_ref().unwrap());
+                });
+                || ()
+            },
+            vec![audio_id_clone],
+        );
+    }
     html! {
-        <h1>{"Audio visualizer"}</h1>
+            <canvas ref={canvas_ref}
+                width={AUDIO_OUPTUT_VISUALIZATION_WIDTH.to_string()}
+                height={AUDIO_OUPTUT_VISUALIZATION_HEIGHT.to_string()}
+            />
     }
 }
