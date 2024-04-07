@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET \n                verification_token = NULL,\n                verification_token_expires_in = NULL,\n                enabled = TRUE,\n                password = $2\n                WHERE verification_token = $1 AND verification_token_expires_in > now()\n                RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "verification_token",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "verification_token_expires_in",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "enabled",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "04bad021033e337870f02d03407f8fa29d14439ef9a5dec0047cd1b5dfd200ff"
+}

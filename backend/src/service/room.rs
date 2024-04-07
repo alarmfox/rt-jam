@@ -1,23 +1,14 @@
-use std::{collections::HashMap, default, sync::Arc};
-
 use axum::extract::FromRef;
 use sqlx::{prelude::FromRow, PgPool};
 use time::PrimitiveDateTime;
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use super::{error::Error};
+pub(crate) use super::error::Error;
 
-struct Session {
-    current_people_listening: i32,
-    current_people_playing: i32,
-    max_people_playing: i32,
-}
 
 #[derive(Clone, FromRef)]
 pub struct Service {
     db: PgPool,
-    sessions: Arc<Mutex<HashMap<Uuid, Session>>>,
 }
 
 #[derive(FromRow)]
@@ -38,7 +29,6 @@ impl Service {
     pub fn new(db: PgPool) -> Self {
         Self {
             db,
-            sessions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -72,14 +62,6 @@ impl Service {
         .fetch_one(&self.db)
         .await?;
 
-        self.sessions.lock().await.insert(
-            id,
-            Session {
-                current_people_playing: 0,
-                current_people_listening: 0,
-                max_people_playing,
-            },
-        );
 
         Ok(room)
     }

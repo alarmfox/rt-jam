@@ -1,12 +1,15 @@
 use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use common::types::RegisterRequest;
+use gloo_net::http::Request;
 use validator::{Validate, ValidationErrors};
+use wasm_bindgen_futures::spawn_local;
+use web_sys::console::log_1;
 use yew::prelude::*;
 use yew_router::{components::Link, hooks::use_navigator};
 
 use crate::components::{
-    atoms::{form_title::TextTitle, logo::Logo, text_input::TextInput},
+    atoms::{form_title::TextTitle, logo::Logo, spinner::Spinner, text_input::TextInput},
     pages::classes::{box_div_classes, main_div_classes, submit_button_classes},
     router::Route,
 };
@@ -27,6 +30,11 @@ fn get_input_callback(
         cloned_form.set(data);
     })
 }
+struct FormState {
+    pub is_loading: bool,
+    pub is_error: bool,
+    pub message: Option<AttrValue>,
+}
 #[function_component(Register)]
 pub fn register() -> Html {
     let navigator = use_navigator().unwrap();
@@ -36,18 +44,61 @@ pub fn register() -> Html {
         first_name: "".into(),
         last_name: "".into(),
     });
+    let form_state = use_state(|| FormState {
+        is_loading: false,
+        is_error: false,
+        message: None,
+    });
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
 
     let onsubmit = {
         let form = form.clone();
         let navigator = navigator.clone();
         let validation_errors = validation_errors.clone();
+        let form_state = form_state.clone();
         Callback::from(move |e: SubmitEvent| {
             e.prevent_default();
 
             match form.validate() {
                 Ok(()) => {
-                    navigator.replace(&Route::Login);
+                    let form = form.deref().clone();
+                    let navigator = navigator.clone();
+                    let form_state = form_state.clone();
+                    spawn_local(async move {
+                        form_state.set(FormState {
+                            is_error: false,
+                            message: None,
+                            is_loading: true,
+                        });
+                        let body = serde_json::to_string(&form).unwrap();
+                        match Request::post("/api/auth/sign-up")
+                            .header("Content-Type", "application/json")
+                            .body(Some(body))
+                            .send()
+                            .await
+                        {
+                            Ok(res) => {
+                                if res.ok() {
+                                    navigator.replace(&Route::Login);
+                                    form_state.set(FormState {
+                                        is_error: false,
+                                        message: None,
+                                        is_loading: false,
+                                    });
+                                } else {
+                                    form_state.set(FormState {
+                                        is_error: true,
+                                        message: Some("Invalid credentials".into()),
+                                        is_loading: false,
+                                    });
+                                }
+                            }
+                            // network error
+                            Err(err) => {
+                                log_1(&err.to_string().into());
+                            }
+                        };
+                    });
                 }
                 Err(e) => {
                     validation_errors.set(Rc::new(RefCell::new(e)));
@@ -112,6 +163,9 @@ pub fn register() -> Html {
                        <button type={"submit"} class={submit_button_classes()}>
                            <div class={"flex justify-center"}>
                                <span>{"Create account"}</span>
+                            if form_state.clone().deref().is_loading {
+                                <Spinner />
+                            }
                            </div>
                        </button>
                        <p class="text-sm font-light text-gray-500 dark:text-gray-400">

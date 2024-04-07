@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM sessions WHERE id = $1 AND expiry_date > $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "data",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 2,
+        "name": "expiry_date",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f5d0d2969f1de086f710d17cd0df98226771d5acb951e76bcff4d0da97c0cfd0"
+}

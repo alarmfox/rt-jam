@@ -1,10 +1,11 @@
+mod config;
 mod log;
 mod service;
 mod web;
 
 use std::{future::IntoFuture, net::ToSocketAddrs};
 
-use axum::{middleware, routing::get, Router};
+use axum::{middleware, Router};
 use base64::{engine::general_purpose, Engine};
 use service::{
     email,
@@ -13,7 +14,7 @@ use service::{
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::{signal, task::AbortHandle};
 use tower_cookies::{CookieManagerLayer, Key};
-use tracing::{error, info};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 use web::{
     mw_auth::{mw_ctx_require, mw_ctx_resolver},
@@ -39,26 +40,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let db =
-        connect_to_db("postgres://postgres:postgres@localhost/postgres?sslmode=disable").await?;
+    let config = config::Config::load_from_env()?;
 
-    let email_service = email::Service::new(email::Config {
-        smtp_host: "mail.privateemail.com".into(),
-        smtp_port: 587,
-        smtp_user: "info@capass.org".into(),
-        smtp_pass: "@info-Alarmfox97".into(),
-        smtp_from: "info@capass.org".into(),
-        app_url: "http://localhost:8080".into(),
-    })
-    .await?;
+    let db = connect_to_db(config.clone().database_url.as_str()).await?;
+
+    sqlx::migrate!("../backend/migrations").run(&db).await?;
+
+    let email_service = email::Service::new(email::Config::from(config.clone())).await?;
 
     let auth_service = auth::Service::new(db.clone(), email_service);
     let session_service = session::Service::new(db.clone());
     let room_service = room::Service::new(db.clone());
 
     let key = general_purpose::STANDARD
-        .decode("mN1GR7dsQ+Bj8NFIA+n/uvSbBcdyvHnVdFuJSJrQJ3g2/8gGYaATt3Wv7j3xKpD07652no/eddRdD7sJTVjg4w==")
+        .decode(config.session_key)
         .unwrap();
+
     SESSION_COOKIE_KEY
         .set(Key::from(key.as_ref()))
         .expect("cannot set key");
@@ -70,13 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let opt = webtransport::WebTransportOpt {
-        listen: "0.0.0.0:4433".to_socket_addrs().unwrap().next().unwrap(),
+        listen: config.webtransport_address.to_socket_addrs().unwrap().next().unwrap(),
         certs: Certs {
-            key: "backend/certs/localhost.dev.key".into(),
-            cert: "backend/certs/localhost.dev.pem".into(),
+            key: config.key_path.into(),
+            cert: config.cert_path.into(),
         },
     };
-
 
     let app = Router::new()
         .nest("/api/rooms", routes_room::router(room_service))
@@ -93,8 +89,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(middleware::from_fn(mw_req_stamp_resolver))
         .layer(CookieManagerLayer::new());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    info!("listening on {}", "0.0.0.0:3000");
+    let listener = tokio::net::TcpListener::bind(config.listen_address.clone()).await?;
+    info!("listening on {}", config.listen_address);
     tokio::select! {
         res = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(deletion_task.abort_handle())).into_future() => {
@@ -108,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn connect_to_db(dsn: &'static str) -> Result<PgPool, Box<dyn std::error::Error>> {
+async fn connect_to_db(dsn: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
     let conn = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(std::time::Duration::from_secs(3))

@@ -41,6 +41,15 @@ pub fn home() -> Html {
     });
 
     let create_session = {
+        let navigator = navigator.clone();
+        Callback::from(move |e: MouseEvent| {
+            e.prevent_default();
+            let navigator = navigator.clone();
+            navigator.push(&Route::CreateRoom);
+        })
+    };
+
+    let join_session = {
         let form_state = form_state.clone();
         let navigator = navigator.clone();
         let session_id = session_id.clone();
@@ -127,7 +136,7 @@ pub fn home() -> Html {
                                 }
                             }
 
-                            <button onclick={create_session} type={"button"} class={submit_button_classes()}>
+                            <button onclick={join_session} type={"button"} class={submit_button_classes()}>
                                 <div class={"flex justify-center"}>
                                     <span>{"Join existing session"}</span>
                                     if form_state.clone().deref().is_loading {
@@ -138,7 +147,7 @@ pub fn home() -> Html {
                             <div class={"flex justify-center"}>
                                 <h1>{"or"}</h1>
                             </div>
-                            <button type={"button"} class={submit_button_classes()}>
+                            <button onclick={create_session} type={"button"} class={submit_button_classes()}>
                                 <div class={"flex justify-center"}>
                                     <span>{"Create new session"}</span>
                                     if form_state.clone().deref().is_loading {

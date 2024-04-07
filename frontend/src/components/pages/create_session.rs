@@ -105,7 +105,7 @@ pub fn create_room() -> Html {
                             Ok(res) => {
                                 if res.ok() {
                                     let response = res.json::<RoomResponse>().await.unwrap();
-                                    navigator.replace(&Route::Session {
+                                    navigator.push(&Route::Session {
                                         id: response.id.into(),
                                     });
                                     form_state.set(FormState {

@@ -18,6 +18,7 @@ use sec_http3::{
     quic::{self, RecvDatagramExt, SendDatagramExt, SendStreamUnframed},
     server::Connection,
 };
+use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -121,8 +122,9 @@ pub async fn start(opt: WebTransportOpt) -> Result<(), Box<dyn std::error::Error
 
     info!("listening on {}", opt.listen);
 
+    let addr = env::var("RTJAM_NATS_URL")?;
     let nc =
-        async_nats::connect("localhost:4222")
+        async_nats::connect(addr)
             .await?;
 
     // 2. Accept new quic connections and spawn a new task to handle them
