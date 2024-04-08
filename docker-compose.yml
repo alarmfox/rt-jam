@@ -1,20 +1,19 @@
-version: "3.9"
+version: "3.12"
 
 services:
 
   backend:
     build:
-      dockerfile: docker/Dockerfile.dev.backend
-      context: ../
+      dockerfile: backend/Dockerfile
+      context: .
     environment:
-      - RUST_LOG="backend=debug"
-      - RTJAM_DATABASE_URL=postgres://postgres:postgres@postgres/postgres?sslmode=disable
+      - RTJAM_DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable&connect_timeout=10
       - RTJAM_LISTEN_ADDRESS=0.0.0.0:3000
       - RTJAM_SESSION_KEY=mN1GR7dsQ+Bj8NFIA+n/uvSbBcdyvHnVdFuJSJrQJ3g2/8gGYaATt3Wv7j3xKpD07652no/eddRdD7sJTVjg4w==
       - RTJAM_SMTP_HOST=mail.privateemail.com
       - RTJAM_SMTP_PORT=587
       - RTJAM_SMTP_USER=info@capass.org
-      - RTJAM_SMTP_PASSWORD=
+      - RTJAM_SMTP_PASSWORD=@info-Alarmfox97
       - RTJAM_SMTP_FROM=info@capass.org
       - RTJAM_APP_URL=http://localhost:8080
       - RTJAM_WEBTRANSPORT_ADDRESS=0.0.0.0:4433
@@ -28,7 +27,8 @@ services:
       - "3000:3000/tcp"
       - "4433:4433/udp"
     volumes:
-      - ../backend/certs/:/app/certs
+      - ./backend/certs/:/app/certs
+    restart: on-failure:5
 
   postgres:
     image: postgres:12.18-bullseye
@@ -41,8 +41,8 @@ services:
 
   frontend:
     build:
-      dockerfile: docker/Dockerfile.frontend
-      context: ../
+      dockerfile: frontend/Dockerfile
+      context: .
     command: bash -c "trunk serve --proxy-backend=http://backend:3000/api/ --address=0.0.0.0"
     ports:
       - "8080:8080"
