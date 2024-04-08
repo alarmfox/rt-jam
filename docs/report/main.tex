@@ -62,34 +62,10 @@ pensato il web inizialmente. Infatti, il web prende un'accezione sempre più lar
 in cui alla navigazione classica mediante un browser si aggiungono requisiti di sicurezza,
 performance e comunicazioni a bassa latenza. 
 
-In particolare, il progetto utilizza uno stack software basato su Rust che utilizza
-\textit{WebAssembly} per interagire con il browser ed esplorare il protocollo QUIC per
-realizzare un'applicazione di streaming audio a bassa latenza.
 \clearpage
 \section{Architettura}
+Il 
 \clearpage
-\section{Implementazione}
-\subsection{Tecnologie utilizzate}
-\subsubsection{Stack software}
-Il progetto è realizzato completamente in Rust: un linguaggio compilato fortemente tipizzato
-con un meccanismo di gestione della memoria innovativo basato sul concetto di
-\textbf{\textit{borrowing}}. 
-Infatti, usando il \textbf{\textit{borrow checker}} Rust riesce a fare a meno di un 
-\textit{runtime} con un \textit{garbage collector} garantendo il concetto di \textit{memory
-safety} a tempo di compilazione\footnote{Con \textit{memory safety} si intende l'assenza 
-di vulnerabilità del tipo \textit{use after free, double free} e accesso a puntatori
-invalidi}.
-
-\paragraph{Web framework: Axum} Axum è un framework web basato sul runtime asincrono
-\textit{Tokio} che consente di effettuare multiplexing delle connessioni sfruttando le 
-risorse fisiche della macchina in maniera efficiente. Come tutti i web framework, quali
-Spring, ASP.net etc., Axum consente di definire un'architettura a middleware basata sui
-pattern IoC (Inversion of Control) e dependency injection. 
-
-\paragraph{Database communication: sqlx} Grazie al sistema delle \textit{macro} compilate,
-è possibile utilizzare una libreria che fa affidamento su \textit{sql} per la comunicazione 
-con il database. In questo modo, viene eliminato l'overhead della \textit{mapping} delle 
-righe del database in oggetti.
 
 \clearpage
 \section{Installazione}
