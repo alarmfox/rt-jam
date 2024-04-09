@@ -45,10 +45,11 @@ La repository è organizzata come segue:
     └── src
 
 ```
-* **backend**: contiene il server dell'applicazione. Espone un'API JSON per la gestione delle entità e un endpoint in webtransport per la gestione dello streaming;
+* **backend**: contiene il server dell'applicazione. Espone un'API JSON per la gestione delle entità e un endpoint in webtransport per la gestione dello streaming
 * **frontend**: contiene il codice `yew.rs` che usa WebAssembly
 * **common**: include strutture comuni sia al frontend che backend
 * **protobuf**: contiene le definizioni di tipi che saranno utilizzati per lo streaming
+
 ## Compilazione ed esecuzione
 L'applicazione viene gestita con un Makefile. Per ricevere tutte i comandi creati eseguire:
 
