@@ -13,7 +13,7 @@ pub static VIDEO_CODEC: &str = "vp09.00.10.08"; // profile 0,level 1.0, bit dept
 
 pub const AUDIO_CHANNELS: u32 = 2u32;
 pub const AUDIO_SAMPLE_RATE: u32 = 48000u32;
-pub const AUDIO_BITRATE: f64 = 320000f64;
+pub const AUDIO_BITRATE: f64 = 450000f64;
 
 // vga resolution
 // pub const VIDEO_HEIGHT: i32 = 480i32;
