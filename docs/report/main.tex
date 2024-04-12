@@ -76,6 +76,8 @@ come spiegato in \cref{section:quic-protocol}, è stato riutilizzato il codice d
   \item Eliminazione dell'implementazione mediante websocket;
   \item Eliminazione della parte di screen-sharing;
   \item Modifica della parte audio per inviare e ricevere audio stereo con codec opus;
+  \item Aggiunta di una callback per recuperare l'id della sorgente audio selezionata, per 
+    implemente un oscilloscopio;
 \end{itemize}
 
 \clearpage
@@ -754,9 +756,10 @@ che può andare da $320 kb/s$ a $450 kb/s$ (basandosi su \cite{rfc6716}). La con
 del codec è riportata in \cref{lst:audio-config}. Successivamente, per rendere effettive le modifiche dal punto 
 di vista dei dispositivi si è intervenuto sia sull'encoder che sul decoder (situati 
 rispettivamente nei file \textit{microphone\_encoder.rs} e \textit{config.rs}), 
-come mostrato \cref{lst:encoder-params} in e \cref{lst:decoder-params} . Infine, per migliorare la latenza, si è
-abbasata la dimensione del buffer utilizzato da $100Kb$ a $4Kb$, come mostrato in
-\cref{lst:encoder-buffer-size}. 
+come mostrato \cref{lst:encoder-params} in e \cref{lst:decoder-params}. Infine, per realizzare 
+il componente AudioVisualizer il cui scopo è quello di fornire un feedback visivo a chi 
+sta suonando è stata aggiunta una callback per catturare l'evento in cui l'utente cambia 
+la sorgente del dispositivo (\cref{lst:callback-audio-id}).
 
 \begin{lstlisting}[language=Rust, style=boxed, label={lst:audio-config}, captionpos=b,caption={Configurazione utilizzata per trasmettere l'audio}]
 pub static AUDIO_CODEC: &str = "opus";
@@ -811,20 +814,31 @@ pub fn configure_audio_context(
 
 \end{lstlisting}
 
-
-\begin{lstlisting}[language=Rust, style=boxed, label={lst:encoder-buffer-size}, captionpos=b,caption={Riduzione del buffer size per l'encoder OPUS}]
-let audio_output_handler = {
-  let mut buffer: [u8; 4096] = [0; 4096];
-  let mut sequence = 0;
-  Box::new(move |chunk: JsValue| {
-    let chunk = web_sys::EncodedAudioChunk::from(chunk);
-    let packet: PacketWrapper =
-      transform_audio_chunk(&chunk, &mut buffer, &userid, sequence, aes.clone());
-      client.send_packet(packet);
-      sequence += 1;
-    })
-};
-
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:callback-audio-id}, captionpos=b,caption={Modifica del file host.rs per invocare la callback}]
+pub enum Msg {
+    WsAction(WsAction),
+    MeetingAction(MeetingAction),
+    OnPeerAdded(String),
+    OnFirstFrame((String, MediaType)),
+    // aggiunta callback per ricavare l'id della sorgente audio
+    OnChangeMic(String),
+}
+// file host.rs
+fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+  match msg {
+    // invocazione della callback dichiarata in precedenza
+    Msg::AudioDeviceChanged(audio) => {
+      if self.microphone.select(audio.clone()) {
+        let link = ctx.link().clone();
+        let timeout = Timeout::new(1000, move || {
+        link.send_message(Msg::EnableMicrophone(true));
+      });
+      timeout.forget();
+    }
+    self.on_audio_src_changed.emit(audio);
+    false
+  }
+}
 \end{lstlisting}
 
 \subsubsection{Serializzazione binaria: protocol buffer} 
@@ -1238,6 +1252,42 @@ Infine, basta scegliere la sorgente audio dall'applicazione, come mostrato in \c
   \caption{Selezione della sorgente audio nell'applicazione}\label{fig:selecting-vmic}
 \end{figure}
 
+\paragraph{Performance}L'applicazione è intesa da utilizzare con dispositivi hardware (interfacce audio)
+con cui effettuare gran parte del workload con cui effettuare DSP. La demo con dispositivi virtuali serve
+a dimostrare il funzionamento, ma è possibile riscontrare bassa qualità dell'audio e fenomeni di glitch/distorsioni.
+Per rilassare lo stress sulla CPU è possibile aumentare la dimensione del buffer dell'encoder (aumentando una 
+possibile latenza). Il buffer (microphone\_encoder.rs della libreria videocall-client \cref{lst:encoder-size}) può essere aumentato
+in accordo con le dimensioni dell'head messo a disposizione dalla macchina WebAssembly (circa $500\_000$ byte)
+oltre al quale si ottiene un errore di accesso in memoria.
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:encoder-size}, captionpos=b,caption={Dimensione del buffer per l'encoder OPUS}]
+pub fn start(&mut self) {
+  let device_id = if let Some(mic) = &self.state.selected {
+    mic.to_string()
+  } else {
+    return;
+  };
+  let client = self.client.clone();
+  let userid = client.userid().clone();
+  let aes = client.aes();
+  let audio_output_handler = {
+    let mut buffer: [u8; 500000] = [0; 500000];
+    let mut sequence = 0;
+    Box::new(move |chunk: JsValue| {
+      let chunk = web_sys::EncodedAudioChunk::from(chunk);
+      let packet: PacketWrapper =
+        transform_audio_chunk(&chunk, &mut buffer, &userid, sequence, aes.clone());
+      client.send_packet(packet);
+      sequence += 1;
+    })
+  };
+  let EncoderState {
+    destroy,
+    enabled,
+    switching,
+    ..
+  } = self.state.clone();
+\end{lstlisting}
 \clearpage
 
 

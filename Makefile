@@ -16,10 +16,8 @@ build:
 
 ## dev: creates nats and postgres container; executes backend and frontend locally
 dev:
-	docker run -d --network=host nats
-	docker run -d --network=host -e POSTGRES_PASSWORD=postgres postgres
 	cargo watch -wq backend/ -w common -x "cargo run --bin backend" &
-	trunk serve &
+	RUSTFLAGS=--cfg=web_sys_unstable_apis trunk serve
 
 .PHONY: help
 ## help: prints this help message
