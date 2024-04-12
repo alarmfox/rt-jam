@@ -59,11 +59,11 @@ L'applicazione viene gestita con un Makefile. Per ricevere tutte i comandi creat
 make help
 Usage:
   up             executes the application using docker-compose
+  down           deletes docker containers
   build-images   build docker images
   build          statically build frontend and backend
   dev            creates nats and postgres container; executes backend and frontend locally
   help           prints this help message
-
 ```
 
 ### Usando docker-compose (consigliato)
@@ -114,8 +114,8 @@ pactl load-module module-remap-source master=virtmic1.monitor source_name=virtmi
 ```
 
 Attraverso, un'interfaccia grafica come `pavucontrol` è possibile scegliere, per tutte le applicazioni, il sink (destinazione). 
-![sink](./docs/figures/selecting_sink.png)
+![sink](./docs/report/figures/selecting_sink.png)
 
 Selezionato il sink, è possibile scegliere come input dell'applicazione la sorgente audio desiderata e iniziare a inviare dati.
-![vmic](./docs/figures/selecting_vmic.png)
+![vmic](./docs/report/figures/selecting_vmic.png)
 
