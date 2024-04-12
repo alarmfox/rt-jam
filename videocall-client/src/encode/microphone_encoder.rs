@@ -99,7 +99,7 @@ impl MicrophoneEncoder {
         let userid = client.userid().clone();
         let aes = client.aes();
         let audio_output_handler = {
-            let mut buffer: [u8; 1000000] = [0; 1000000];
+            let mut buffer: [u8; 500000] = [0; 500000];
             let mut sequence = 0;
             Box::new(move |chunk: JsValue| {
                 let chunk = web_sys::EncodedAudioChunk::from(chunk);
