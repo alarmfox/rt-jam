@@ -1,6 +1,9 @@
 ## up: executes the application using docker-compose
 up:
 	docker compose  up
+## down: deletes docker containers
+down:
+	docker compose down 
 
 ## build-images: build docker images
 build-images:
