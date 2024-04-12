@@ -9,12 +9,12 @@ build-images:
 ## build: statically build frontend and backend
 build:
 	cargo build --bin backend --release
-	trunk build --release
+	RUSTFLAGS=--cfg=web_sys_unstable_apis trunk build --release
 
 ## dev: creates nats and postgres container; executes backend and frontend locally
 dev:
-	docker run --network=host nats
-	docker run --network=host -e POSTGRES_PASSWORD=postgres postgres
+	docker run -d --network=host nats
+	docker run -d --network=host -e POSTGRES_PASSWORD=postgres postgres
 	cargo watch -wq backend/ -w common -x "cargo run --bin backend" &
 	trunk serve &
 

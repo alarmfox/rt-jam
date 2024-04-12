@@ -1,5 +1,8 @@
 version: "3.12"
 
+volumes:
+  pgdata:
+
 services:
 
   backend:
@@ -34,6 +37,8 @@ services:
     image: postgres:12.18-bullseye
     environment:
       - POSTGRES_PASSWORD=postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   nats:
     image: nats
@@ -43,7 +48,7 @@ services:
     build:
       dockerfile: frontend/Dockerfile
       context: .
-    command: bash -c "trunk serve --proxy-backend=http://backend:3000/api/ --address=0.0.0.0"
+    command: bash -c "RUSTFLAGS=--cfg=web_sys_unstable_apis trunk serve --proxy-backend=http://backend:3000/api/ --address=0.0.0.0"
     ports:
       - "8080:8080"
 

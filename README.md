@@ -1,5 +1,7 @@
 # RT-Jam
 
+![vmic](./docs/report/figures/session2_page.png)
+
 ## Struttura della repository
 La repository è organizzata come segue:
 ```

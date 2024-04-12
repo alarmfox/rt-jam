@@ -1,6 +1,10 @@
 \documentclass{article}
 
-\usepackage{tikz, hyperref, cleveref, apacite}
+\usepackage{tikz, hyperref, cleveref, apacite, graphicx, caption, subcaption}
+\usepackage{listings, listings-rust, protobuf/style, protobuf/lang}
+\usepackage[inkscapeformat=png]{svg}
+\crefname{lstlisting}{listato}{listings}
+\Crefname{lstlisting}{Listato}{Listings}
 
 \crefformat{section}{\S#2#1#3}
 \crefformat{subsection}{\S#2#1#3}
@@ -56,19 +60,1152 @@
 
 \section*{Introduzione}
 Il progetto ha come obiettivo quello di esplorare un modo più moderno di approcciarsi al 
-mondo dello sviluppo web.  Oggigiorno le applicazioni devono essere altamente interattive e
+mondo dello sviluppo web. Oggigiorno le applicazioni devono essere altamente interattive e
 vanno oltre la semplice visualizzazione di immagini statiche e pagine HTML per cui era stato
 pensato il web inizialmente. Infatti, il web prende un'accezione sempre più larga
 in cui alla navigazione classica mediante un browser si aggiungono requisiti di sicurezza,
 performance e comunicazioni a bassa latenza. 
 
-\clearpage
-\section{Architettura}
-Il 
-\clearpage
+Il progetto sfrutta la tecnologia WebAssembly e il protocollo QUIC per realizzare una 
+soluzione di streaming portabile. Per la parte WebTransport, è stato riutilizzato
+il codice in \cite{VideoCallRs} insieme alle definizioni ProtocolBuffer utilizzate 
+anche nel server. In particolare,
+come spiegato in \cref{section:quic-protocol}, è stato riutilizzato il codice della libreria chiamata
+\textbf{\textit{videocall-client}} a cui sono apportate le seguenti modifiche:
+\begin{itemize}
+  \item Eliminazione dell'implementazione mediante websocket;
+  \item Eliminazione della parte di screen-sharing;
+  \item Modifica della parte audio per inviare e ricevere audio stereo con codec opus;
+\end{itemize}
 
 \clearpage
-\section{Installazione}
+% \section{Casi d'uso}
+% Il progetto mira a dimostrare la fattibilità della trasmissione audio a bassa latenza 
+% utilizzando le tecnologie web ed è stato pensato per essere integrato in applicazioni 
+% orientate alla produzione musicale già esistenti o per piattaforme in cui si effettua 
+% streaming di contenuti general purpose.
+
+% \paragraph{Caso d'uso: DAW} La maggior parte delle Digital Audio Workstation (DAW) è 
+% applicazioni desktop che si interfaccia con un gran numero di dispositivi e, in 
+% generale, non può essere trasferita interamente nell'ecosistema web a causa dei 
+% requisiti stringenti in termini di performance. Per questo motivo,
+% lo streaming di audio potrebbe essere integrando una macchina WebAssembly 
+% all'interno dell'applicazione già esistente e implementare il protocollo QUIC 
+% per sfruttarne le caratteristiche di performance e sicurezza. 
+
+\section{Architettura}
+Come mostrato in \cref{fig:architecture}, l'architettura del sistema è divisa:
+\begin{itemize}
+  \item \textbf{frontend}: applicazione client utilizzata dall'utente per interagire con 
+    gli altri utenti;
+  \item \textbf{backend}: applicazione server che si occupa di esporre un'interfaccia 
+    per la gestione di account e stanze attraverso un API JSON e di implementare il 
+    \textit{broadcasting} dei contenuti multimediali generati dai client con il protocollo
+    QUIC;
+\end{itemize}
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{figures/architecture.png}
+  \end{center}
+  \caption{Architettura del sistema}\label{fig:architecture}
+\end{figure}
+
+Il sistema è stato modellato con il seguente diagramma E/R (\cref{fig:er}), implementato nel database 
+relazionale mostrato nell'architettura. 
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=0.6\textwidth]{figures/er.png}
+  \end{center}
+  \caption{Diagramma E/R dell'aplicazione}\label{fig:er}
+\end{figure}
+
+Il funzionamento generale dello scambio di informazioni multimediali è mostrato in 
+\cref{fig:sq-media}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/sq_media_delivery.png}
+  \end{center}
+  \caption{Descrizione dell'attività di broadcast}\label{fig:sq-media}
+\end{figure}
+
+
+
+\subsection{Tecnologie utilizzate}
+Di seguito è riportata una panoramica delle tecnologie impiegate. 
+
+\subsubsection{Linguaggio: Rust}
+Rust è un linguaggio di quarta generazione focalizzato su \textit{safety}, \textit{performamce}
+e \textit{security}. Queste caratteristiche vengono implementate a tempo di compilazione 
+attraverso il \textbf{\textit{borrow checker}} che si occupa di garantire (attraverso degli 
+opportuni controlli) che non si verifichino accessi in memoria illegali e, quindi, evita la 
+presenza di vulnerabilità quali \textit{double free} \textit{use after free}. Questo approccio 
+inoltre, rende non necessaria la presenza di un \textbf{\textit{garbage collector}} e di un 
+\textit{runtime} rendendolo adatto sia per applicazioni embedded che per quelle che richiedono 
+alte prestazioni. Questo aspetto viene implementato attraverso le \textit{enum} che in rust
+possono esprimere un valore e possono essere ispezionate con un pattern matching esaustivo. 
+e sono utilizzate per implementare il concetto di \textbf{\textit{error-as-value}}
+con il quale si evita accesso a oggetti invalidi. Ad esempio, l'enum \textbf{\textit{Option}}
+può assumere due varianti: \textit{None} o \textit{Some<T>}. Un oggetto incluso in questo
+tipo di enum può essere nullo e l'accesso al suo valore forza il programmatore a estrarlo
+dall'enum Option. 
+\begin{verbatim}
+  let n: Option<i32> = Some(1) //diverso da i32 perchè potrebbe essere None
+  if let Some(n) = n {
+    // si è sicuri che n è una variabile non nulla
+  }
+\end{verbatim}
+
+Inoltre, la presenza del borrow checker assicura che non siano effettuati 
+accessi a puntatori invalidi riducendo il numero di crash. Infine, il linguaggio offre un 
+meccanismo simile al poliformismo detto \textit{Trait} che consente estendere comportamenti 
+di tipi custom con tipi standard. Ad esempio, è possibile implementare il modo in cui un 
+oggetto viene stampato quando si è in fase di debug o implementare metodi di casting sicuro 
+da un tipo ad un altro.
+
+\paragraph{Web Framework: Axum} Per realizzare le funzionalità Web, è stato adottato il 
+framework Axum costruito sul \textit{runtime} asincrono \textit{Tokio} che consente di 
+sviluppare servizi web con uno stile simile a \textit{Springboot} utilizzando i pattern 
+\textbf{\textit{IoC (Inversion of Control)}} e \textbf{\textit{DI (Dependency Injection)}}. 
+Il framework introduce il concetto di stato dell'applicazione: un oggetto che può essere 
+trasmesso agli handler che può essere estratto dal contesto dell'applicazione. Ad esempio,
+in \cref{lst:axum-handler-example}, è possibile osservare un handler che effettua la creazione di una stanza che prende 
+in ingresso un oggetto di tipo \textit{AppState} al cui interno sono presenti i servizi 
+per gestire le sessioni (\textit{session\_service}) e autenticazione (\textit{auth\_service}).
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:axum-handler-example}, captionpos=b,caption={Esempio di handler in Axum}]
+async fn login(
+    State(AppState {
+        auth_service,
+        session_service,
+    }): State<AppState>,
+    cookies: Cookies<'_>,
+    Json(LoginRequest { username, password }): Json<LoginRequest>,
+) -> Result<impl IntoResponse> {
+    let user = auth_service.login(username, password).await?;
+    let expiration = {
+        let this = OffsetDateTime::now_utc();
+        let duration = Duration::days(7);
+        this.checked_add(duration)
+            .expect("resulting value is out of range")
+    };
+    let token = session::Service::generate_token();
+    session_service
+        .create(
+            &token,
+            &session::SessionData::from(user.clone()),
+            expiration,
+        )
+        .await?;
+
+    let cookie = Cookie::build(Cookie::new(SESSION_COOKIE_NAME, token))
+        .http_only(true)
+        .secure(true)
+        .expires(expiration)
+        .path("/")
+        .same_site(SameSite::Strict)
+        .build();
+    
+    cookies.add(cookie);
+
+    Ok(AJson(json!({
+        "result": { "success": true }
+    })))
+  }
+
+
+
+\end{lstlisting}
+
+Infine, il framework mette a disposizione un meccanismo di routing e middleware per consentire 
+l'esecuzione di uno stack di funzioni prima di arrivare ad un handler (\cref{lst:axum-router-example}). 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:axum-router-example}, captionpos=b,caption={Esempio di router in Axum}]
+pub fn router(auth_service: auth::Service, session_service: session::Service) -> Router {
+    Router::new()
+        .route("/sign-in", post(login))
+        .route("/sign-up", post(register))
+        .route("/sign-out", post(logout))
+        .route("/me", get(me))
+        .route("/change-password", post(change_password))
+        .route("/start-reset", post(start_reset))
+        .with_state(AppState {
+            auth_service,
+            session_service,
+        })
+}
+\end{lstlisting}
+
+\paragraph{Interazione con database: SQLX} Sqlx è una libreria che consente di interagire 
+con molti database relazionali con la possibilità di effettuare query \textit{type-safe}
+a tempo di compilazione. In particolare, necessita della variabile d'ambiente
+\textit{DATABASE\_URL} che punta al database in utilizzo e controlla durante la fase di 
+compilazione che tutti i parametri in ingresso e in uscita dalla query siano coerenti con lo 
+schema in uso. Inoltre, offre anche un \textit{utility} da riga di comando per gestire migrazioni 
+il cui risultato è presente all'interno della cartella \textit{backend/migrations} del progetto. 
+Ad esempio, in \cref{lst:sqlx-example}, è mostrata una query effettuata utilizzando la macro \textit{sqlx::query\_as!}
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:sqlx-example}, captionpos=b,caption={Esempio di query in Rust con SQLX}]
+pub async fn login(&self, username: String, password: String) -> Result<User> {
+  let user = sqlx::query_as!(
+    User,
+      "SELECT * FROM users WHERE username= $1 AND enabled = TRUE",
+      username
+    )
+    .fetch_optional(&self.db)
+    .await
+    .map_err(|e| Error::DatabaseError(e))?;
+
+    let user = match user {
+      Some(user) => user,
+      None => return Err(Error::InvalidCredentials),
+    };
+
+    let password_hash = user.clone().password.ok_or(Error::InvalidCredentials)?;
+
+    let password_hash = PasswordHash::new(&password_hash).map_err(|_e| Error::CryptoError)?;
+
+    Argon2::default()
+      .verify_password(password.as_bytes(), &password_hash)
+      .map_err(|_e| Error::InvalidCredentials)
+      .map(|_a| user)
+  }
+
+\end{lstlisting}
+
+\paragraph{Protocollo SMTP: Lettre e Askama} Lettre è una libreria che implementa il protocollo SMTP 
+per l'invio di email. Infatti, l'applicazione invia una email:
+\begin{itemize}
+  \item ogni volta che viene creato un account per verificare l'identità del nuovo
+    utente e permettergli di impostare una password;
+  \item per permettere all'utente di re-impostare la password in caso l'avesse dimenticata;
+\end{itemize}
+
+In \cref{lst:send-email-example}, è mostrato come viene inviata un email nell'applicazione. 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:send-email-example}, captionpos=b,caption={Esempio di invio email in Rust con Lettre}]
+pub async fn send_verification_link(
+  &self,
+  token: &str,
+  user: &User,
+) -> Result<(), Box<dyn std::error::Error>> {
+  let link = format!("{}/change-password?token={}", self.app_url, token);
+  let subject = format!("Welcome, {}", user.first_name);
+
+  let template = ChangePassword {
+    subject: subject.clone(),
+    user: user.clone(),
+    message:
+      String::from("Welcome onboard! Please, click the button below to set a password for your account"),
+        link,
+    }.render()?;
+
+        let email = Message::builder()
+            .to(format!("{} <{}>", user.first_name, user.email)
+                .parse()
+                .unwrap())
+            .reply_to(self.from.parse().unwrap())
+            .from(self.from.parse().unwrap())
+            .subject(subject)
+            .header(ContentType::TEXT_HTML)
+            .body(template)?;
+
+        self.transport.send(email).await?;
+
+        Ok(())
+}
+
+\end{lstlisting}
+In particolare, l'email viene costruita in formato HTML con un \textit{Askama}: una libreria 
+per il templating dei file html che consente di effettuare il parsing di file di input e di 
+dichiarare dei placeholder che possono essere sostituiti con dati veri a tempo di esecuzione.  
+In, è mostrato il template usato nel progetto. 
+
+\begin{lstlisting}[language=html, style=boxed, label={lst:email-template}, captionpos=b,caption={Layout email utilizzato}]
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>{{subject}}</title>
+
+    {% include "partials/email_style.html" %}
+  </head>
+
+  <body>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="body">
+      <tr>
+        <td>&nbsp;</td>
+        <td class="container">
+          <div class="content">
+            <!-- START CENTERED WHITE CONTAINER -->
+            {% block content %} {% endblock %}
+            <!-- END CENTERED WHITE CONTAINER -->
+          </div>
+        </td>
+        <td>&nbsp;</td>
+      </tr>
+    </table>
+  </body>
+
+</html>
+
+\end{lstlisting}
+Si noti come il contenuto principale dell'email sia stato indicato con il placeholder \textit{block}. 
+Questo file viene incluso dal file email che ne estende il comportamento dichiarando il contentuto 
+del blocco content, mostrato in 
+
+\begin{lstlisting}[language=html, style=boxed, label={lst:content-email-template}, captionpos=b,caption={Corpo dell'email utilizzato}]
+{% extends "layouts/email.html" %}
+
+{% block content %}
+  ...omesso per brevit
+  <p>Hi {{user.first_name}},</p>
+  <p>{{message}}</p>
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+  <tbody>
+    <tr>
+      <td align="left">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+          <tbody>
+            <tr>
+              <td>
+                <a href="{{link}}" target="_blank">Verify your account</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  ...omesso per brevit
+  </tr>
+</table>
+{% endblock %}
+
+\end{lstlisting}
+
+\paragraph{Frontend framework: Yew} Yew è un framework che permette di scrivere applicazioni 
+web in Rust utilizzando WebAssembly. In particolare, Yew mette a disposizione la macro 
+\textit{html!} che permette di scrivere sintassi simile a \textbf{\textit{JSX}} per creare 
+pagine web type-safe a tempo di compilazione. Inoltre, la struttura delle applicazioni è molto 
+simile a quella utilizzata in framework quali \textit{React.js} ed è possibile scrivere 
+componenti sia in forma funzionale che di classe. Infine, il framework mette a disposizione
+\textbf{\textit{hook}} come \textbf{\textit{use\_state, use\_effect}} che permettono di 
+realizzare interfacce responsive. In \cref{lst:yew-function-component}, è mostrato un esempio di componente funzionale utilizzato 
+nell'applicazione. Per la realizzazione dell'applicazione è stata utilizzata \textbf{\textit{Yewdux}}
+una libreria di \textit{state management} simile a \textit{Redux} basata su concetti di 
+\textit{getter} e \textit{reducer}.
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:yew-function-component}, captionpos=b,caption={Esempio di componente funzionale}]
+#[function_component(Session)]
+pub fn session(Props { id }: &Props) -> Html {
+    let clipboard = use_clipboard();
+    let to_clipboard = {
+        let id = id.clone();
+        Callback::from(move |_: MouseEvent| {
+            clipboard.write_text(id.to_string());
+        })
+    };
+    let navigator = use_navigator().unwrap();
+    let (store, dispatch) = use_store::<Store>();
+    use_effect(move || {
+        spawn_local(async move {
+            match Request::get("/api/auth/me").send().await {
+                Ok(res) => {
+                    if res.ok() {
+                        let user = res.json::<UserResponse>().await.unwrap();
+                        dispatch.reduce_mut(move |s| s.auth_user = Some(user.into()));
+                    } else {
+                        navigator.replace(&Route::Login);
+                    }
+                }
+                // network error
+                Err(err) => {
+                    log_1(&err.to_string().into());
+                }
+            };
+        });
+    });
+
+    let user = store.auth_user.clone();
+    html! {
+        <>
+            if let Some(user) = user {
+                <Header />
+                <div class="flex flex-row px-4 py-2">
+                    <h1>{"Session id: "}</h1>
+                    <div onclick={to_clipboard} class="block text-lg bg-gray-600 cursor-pointer ">
+                        {id}
+                        <i class="ml-1 fa-clipboard fa-solid"></i>
+                    </div>
+                    <h1>{". Share it with your friends!"}</h1>
+                </div>
+                <div class="flex justify-center">
+                    <Client username={user.username} id={id.clone().to_string()}/>
+                </div>
+            }
+        </>
+    }
+}
+\end{lstlisting}
+Yew offre un router per gestire le pagine dell'applicazione attraverso una \textit{Enum} di 
+Rust che grazie ad una funzione riportata in \cref{lst:yew-switch}. Grazie, al pattern matching esaustivo è possibile creare dei check a tempo di compilazione 
+per assicurarsi che l'applicazione mostra le pagine giuste con gli input corretti. In
+\cref{lst:yew-router-component}, è mostrato il router utilizzato nell'applicazione. 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:yew-router-component}, captionpos=b,caption={Rotte utilizzate nel frontend}]
+#[derive(Clone, Routable, PartialEq)]
+pub enum Route {
+    #[at("/")]
+    Home,
+
+    #[at("/login")]
+    Login,
+
+    #[at("/register")]
+    Register,
+
+    #[at("/change-password")]
+    ChangePassword,
+
+    #[at("/start-reset")]
+    StartReset,
+
+    #[at("/session/:id")]
+    Session { id: String },
+
+    #[at("/create-room")]
+    CreateRoom,
+
+    #[not_found]
+    #[at("/not-found")]
+    NotFound,
+}
+
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:yew-switch}, captionpos=b,caption={Funzione switch utilizzata per il mapping di rotte con componenti sviluppati}]
+pub fn switch(routes: Route) -> Html {
+    match routes {
+        Route::Home => html! {
+            <SimpleLayout>
+                <Home />
+            </SimpleLayout>
+        },
+        Route::Session { id } => html! {
+            <SimpleLayout>
+                <Session {id}/>
+            </SimpleLayout>
+        },
+        // altre rotte
+  }
+}
+\end{lstlisting}
+
+\paragraph{Interazione con browser API: web\_sys e wasm\_bindgen} Ogni applicazione che 
+esegue in un browser deve utilizzare Javascript. Infatti, WebAssembly è una tecnologia che
+permette di scrivere applicazioni un linguaggio a scelta, ma ha bisogno di un \textit{bundler}
+(spiegato in \cref{section:web-assembly}) che permette di 
+effettuare il mapping tra le API del browser Javascript e quelle del codice in Rust. Ad
+esempio, per effettuare una richiesta HTTP si userà la corrispettiva funzione \textit{fetch}
+nel browser (esempio a riga 14 di \cref{lst:yew-function-component}) o per stampare qualcosa
+nel browser si userà \textit{console.log}. Le due librerie \textit{web\_sys} e 
+\textit{wasm\_bindgen} offrono questi mapping, e, nella loro versione instabile offrono
+l'accesso a componenti quali \textbf{\textit{AudioEncoder}} e \textbf{\textit{WebTransport}}
+(implementazione del protocollo QUIC nei browser, spiegato in \cref{section:quic-protocol}).
+Ad esempio, in \cref{lst:audio-encoder-example}, è mostrato come si configura l'AudioEncoder.
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:audio-encoder-example}, captionpos=b,caption={Accesso e configurazione di AudioEncoder}]
+let mut audio_encoder_config = AudioEncoderConfig::new(AUDIO_CODEC);
+audio_encoder_config.bitrate(AUDIO_BITRATE);
+audio_encoder_config.sample_rate(AUDIO_SAMPLE_RATE);
+audio_encoder_config.number_of_channels(AUDIO_CHANNELS);
+let ok = AudioEncoder::is_config_supported(&audio_encoder_config);
+log_1(&ok.to_string().js_typeof());
+audio_encoder.configure(&audio_encoder_config);
+
+let audio_processor = MediaStreamTrackProcessor::new(&MediaStreamTrackProcessorInit::new(
+      &audio_track.clone().unchecked_into::<MediaStreamTrack>(),
+      ))
+      .unwrap();
+
+\end{lstlisting}
+\subsubsection{WebAssembly} \label{section:web-assembly}
+WebAssembly \cite{rossberg2021webassembly} è un formato binario per una macchina a stack. I browser moderni inglobano al 
+loro interno una macchina WebAssembly e pertanto tutti i linguaggi che producono un programma
+secondo la specifica di questa macchina a stack possono eseguire nel browser e, quindi, avere
+accesso alle funzionalità web. Questo consente di essere indipendente dal target e di avere 
+un'esecuzione isolata dei processi (in maniera simile alla JVM) con il risultato di avere 
+da un lato le performance del linguaggio scelto (ad esempio Rust, C++, C o Go) e dall'altro di 
+avere un ambiente unificato di esecuzione (\cref{fig:web-assembly-arch}
+). Oltre all'encoding in un formato binario molto 
+più efficiente rispetto a quello classico testuale, WebAssembly specifica la struttura delle
+istruzioni, layout della memoria, formato dei dati e inoltre, specifica la struttura di 
+un runtime asincrono per le applicazioni I/O intensive.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/WebAssembly-high-level-architecture.png}
+  \end{center}
+  \caption{Architettura ad alto livello di una macchina WebAssembly}\label{fig:web-assembly-arch}
+\end{figure}
+
+\paragraph{WASM bundler: Trunk} Trunk è il bundler scelto per preparare 
+l'applicazione per eseguire in una macchina WebAssembly. Innanzitutto, è stato 
+aggiunto al compilatore Rust il target \textbf{\textit{wasm32-unknown-unknown}} con il
+comando:
+
+\begin{verbatim}
+  rustup target add wasm32-unknown-unknown
+\end{verbatim}
+
+Il frontend può essere eseguito con il comando sottostante. Trunk include un proxy http che 
+offre la possibilità di effettuare il routing delle richieste per uno specifico path ad 
+una applicazione e si occupa di gestire i cookie interdominio e di propagare eventuali errori.
+
+\begin{verbatim}
+ trunk serve --proxy-backend=http://localhost:3000/api/ 
+\end{verbatim}
+Trunk può essere configurato attraverso il file \textit{Trunk.toml} attraverso il quale
+è possibile indicare la cartella in cui si trova il codice sorgente, impostazioni di proxy 
+e la cartella di uscita. In particolare, Trunk compila il codice sorgente dell'applicazione
+e crea una SPA (Single Page Application): infatti ha bisogno di un file \textit{index.html}
+con il tag \textit{body} vuoto che andrà a popolare con l'html generato dinamicamente. Inoltre,
+vengono dichiarati alcuni tag speciali (\textit{data-trunk}) per il serving statico dei file. 
+In,  è mostrato il file utilizzato da Trunk come entrypoint dell'applicazione; mentre in è 
+mostrato il file di configurazione utilizzato.
+
+\begin{lstlisting}[language=html, style=boxed, label={lst:wasm-entrypoint}, captionpos=b,caption={Entrypoint per applicazione WASM}]
+<!DOCTYPE html>
+<html class="dark" lang="en"
+  <head>
+    <title>RT-Jam</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link data-trunk rel="css" href="styles/output.css" />
+    <link data-trunk rel="copy-dir" href="static" />
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon" />
+    ... altri link
+  </head>
+  <body class="text-white bg-gray-50 dark:bg-gray-900">
+  
+  </body>
+</html>
+
+\end{lstlisting}
+\subsubsection{Protocollo QUIC} \label{section:quic-protocol}
+QUIC (Quick UDP Internet Connections) \cref{section:quic-protocol}
+è un protocollo di livello trasporto basasto su HTTP3 pensato per risolvere il problema di
+\textit{head-of-line blocking} che si incontrano in protocolli \textit{stream oriented}
+quali TCP in cui un pacchetto appartenente a uno stream blocca tutti gli altri. QUIC risolve
+questo problema supportando nativamente il multiplexing dei flussi di dati; in questo modo i
+flussi più lenti o con un'alta \textit{packet-loss} non influenzano gli altri.
+
+\paragraph{QUIC server side} Per implementare il protocollo QUIC lato server sono state 
+utilizzate le librerie \textit{sec\_http3} (responsabile della gestione di ALPN e della 
+parte TLS) e \textit{quinn} (responsabile dell'implementazione del protocollo QUIC).
+In \cref{lst:quic-server-config}, è mostrata la configurazione di un listener UDP su cui viene applicato un 
+certificato self-signed e ALPN, dichiarati come costanti:
+
+\begin{verbatim}
+  pub const WEB_TRANSPORT_ALPN: &[&[u8]] = &[b"h3", b"h3-32", b"h3-31", b"h3-30", b"h3-29"];
+  pub const QUIC_ALPN: &[u8] = b"hq-29";
+\end{verbatim}
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:quic-server-config}, captionpos=b,caption={Configurazione del server QUIC}]
+let (key, certs) = get_key_and_cert_chain(opt.certs)?;
+
+let mut tls_config = rustls::ServerConfig::builder()
+  .with_safe_default_cipher_suites()
+  .with_safe_default_kx_groups()
+  .with_protocol_versions(&[&rustls::version::TLS13])
+  .unwrap()
+  .with_no_client_auth()
+  .with_single_cert(certs, key)?;
+
+tls_config.max_early_data_size = u32::MAX;
+let mut alpn = vec![];
+for proto in WEB_TRANSPORT_ALPN {
+    alpn.push(proto.to_vec());
+}
+alpn.push(QUIC_ALPN.to_vec());
+
+tls_config.alpn_protocols = alpn;
+
+// 1. create quinn server endpoint and bind UDP socket
+let mut server_config = quinn::ServerConfig::with_crypto(Arc::new(tls_config));
+let mut transport_config = quinn::TransportConfig::default();
+transport_config.keep_alive_interval(Some(Duration::from_secs(2)));
+transport_config.max_idle_timeout(Some(VarInt::from_u32(10_000).into()));
+server_config.transport = Arc::new(transport_config);
+let endpoint = quinn::Endpoint::server(server_config, opt.listen)?;
+
+\end{lstlisting}
+Mentre in \cref{lst:server-loop}, è mostrato il loop effettuato per servire le connessioni. In particolare,
+per ogni richiesta in arrivo, il server verifica che si tratta di un pacchetto QUIC. In 
+caso positivo, procede a servirla trasformandola in una sessione QUIC.
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:server-loop}, captionpos=b,caption={Loop del server UDP}]
+// ...codice omesso
+// 2. Accept new quic connections and spawn a new task to handle them
+while let Some(new_conn) = endpoint.accept().await {
+  trace_span!("New connection being attempted");
+  let nc = nc.clone();
+
+  tokio::spawn(async move {
+    match new_conn.await {
+      Ok(conn) => {
+        if is_http3(&conn) {
+          info!("new http3 established");
+            let h3_conn = sec_http3::server::builder()
+              .enable_webtransport(true)
+              .enable_connect(true)
+              .enable_datagram(true)
+              .max_webtransport_sessions(1)
+              .send_grease(true)
+              .build(h3_quinn::Connection::new(conn))
+              .await
+              .unwrap();
+            let nc = nc.clone();
+            if let Err(err) = handle_h3_connection(h3_conn, nc).await {
+              error!("Failed to handle connection: {err:?}");
+            }
+          } else {
+            info!("new quic established");
+            let nc = nc.clone();
+            if let Err(err) = handle_quic_connection(conn, nc).await {
+                error!("Failed to handle connection: {err:?}");
+            }
+          }
+      }
+      Err(err) => {
+        error!("accepting connection failed: {:?}", err);
+      }
+  }
+});
+}
+
+\end{lstlisting}
+Infine, una volta ottenuta una connessione QUIC, il server chiama la funzione 
+\textit{handle\_session} che crea tre task concorrenti:
+
+\begin{itemize}
+  \item \textbf{\textit{nats\_task}}: si mette in ascolto per tutti i pacchetti in arrivo 
+    per il topic creato per la room in cui si è entrati e li manda sulla sessione corrente
+    evitando di effettuare loop;
+  \item \textbf{\textit{quic\_task}}: per ogni flusso unidirezionale (altri utenti)
+    che arriva dalla sessione crea un'ulteriore task da cui riceve pacchetti e li inoltra su Nats;
+  \item \textbf{\textit{datagram\_task}}: riceve i pacchetti dell'utente host della sessione 
+    e li inoltra su nats;
+\end{itemize}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{./figures/handle_session_fwc.png}
+  \end{center}
+  \caption{Diagramma di flusso della funzione handle\_session}\label{fig:flowchart-handle-session}
+\end{figure}
+
+\paragraph{QUIC client side} I browser implementano il protocollo QUIC attraverso la 
+WebTransport API. Come già spiegato in precedenza, per accedere alla classe WebTransport in 
+un'applicazione WebAssembly è necessario effettuare il mapping delle funzioni nella macchina 
+WASM. In Yew, la connessione è stata realizzata con la libreria \textit{yew-webtransport}. 
+In particolare, è stato riutilizzato il client \textit{videocall-client} trovato in 
+\cite{VideoCallRs}. Di seguito sono riportati i cambiamenti rispetto alla configurazione 
+iniziale. 
+
+Essendo utilizzato in un contesto in cui la sorgente audio è la voce umana, il 
+client di default invia audio mono con un bitrate di 8KHz utilizzando il codec OPUS. La 
+prima modifica è stata quella di rendere l'audio stereo e scegliere un bitrate accettabile
+che può andare da $320 kb/s$ a $450 kb/s$ (basandosi su \cite{rfc6716}). La configurazione
+del codec è riportata in \cref{lst:audio-config}. Successivamente, per rendere effettive le modifiche dal punto 
+di vista dei dispositivi si è intervenuto sia sull'encoder che sul decoder (situati 
+rispettivamente nei file \textit{microphone\_encoder.rs} e \textit{config.rs}), 
+come mostrato \cref{lst:encoder-params} in e \cref{lst:decoder-params} . Infine, per migliorare la latenza, si è
+abbasata la dimensione del buffer utilizzato da $10Kb$ a $4Kb$, come mostrato in
+\cref{lst:encoder-buffer-size}. 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:audio-config}, captionpos=b,caption={Configurazione utilizzata per trasmettere l'audio}]
+pub static AUDIO_CODEC: &str = "opus";
+
+// ...altre costanti
+
+pub const AUDIO_CHANNELS: u32 = 2u32;
+pub const AUDIO_SAMPLE_RATE: u32 = 48000u32;
+pub const AUDIO_BITRATE: f64 = 320000f64 //320kb/s;
+
+// ...altre costanti
+\end{lstlisting}
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:encoder-params}, captionpos=b,caption={Configurazione audio stereo per l'encoder OPUS}]
+let mut constraints = MediaStreamConstraints::new();
+let mut media_info = web_sys::MediaTrackConstraints::new();
+media_info.device_id(&device_id.into());
+media_info.channel_count(&"2".into());
+media_info.auto_gain_control(&"false".into());
+media_info.echo_cancellation(&"false".into());
+media_info.noise_suppression(&"false".into());
+//...altro codice
+let mut audio_encoder_config = AudioEncoderConfig::new(AUDIO_CODEC);
+audio_encoder_config.bitrate(AUDIO_BITRATE);
+audio_encoder_config.sample_rate(AUDIO_SAMPLE_RATE);
+audio_encoder_config.number_of_channels(AUDIO_CHANNELS);
+
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:decoder-params}, captionpos=b,caption={Configurazione audio stereo per il decoder OPUS}]
+pub fn configure_audio_context(
+    audio_stream_generator: &MediaStreamTrackGenerator,
+) -> anyhow::Result<AudioContext> {
+    let js_tracks = Array::new();
+    js_tracks.push(audio_stream_generator);
+    let media_stream = MediaStream::new_with_tracks(&js_tracks).unwrap();
+    let mut audio_context_options = AudioContextOptions::new();
+    audio_context_options.sample_rate(AUDIO_SAMPLE_RATE as f32);
+    let audio_context = AudioContext::new_with_context_options(&audio_context_options).unwrap();
+    let gain_node = audio_context.create_gain().unwrap();
+    gain_node.set_channel_count(AUDIO_CHANNELS);
+    let source = audio_context
+        .create_media_stream_source(&media_stream)
+        .unwrap();
+    source.set_channel_count(AUDIO_CHANNELS);
+    let _ = source.connect_with_audio_node(&gain_node).unwrap();
+    let _ = gain_node
+        .connect_with_audio_node(&audio_context.destination())
+        .unwrap();
+    Ok(audio_context)
+}
+
+\end{lstlisting}
+
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:encoder-buffer-size}, captionpos=b,caption={Riduzione del buffer size per l'encoder OPUS}]
+let audio_output_handler = {
+  let mut buffer: [u8; 4096] = [0; 4096];
+  let mut sequence = 0;
+  Box::new(move |chunk: JsValue| {
+    let chunk = web_sys::EncodedAudioChunk::from(chunk);
+    let packet: PacketWrapper =
+      transform_audio_chunk(&chunk, &mut buffer, &userid, sequence, aes.clone());
+      client.send_packet(packet);
+      sequence += 1;
+    })
+};
+
+\end{lstlisting}
+
+\subsubsection{Broadcast: Nats} 
+Il broadcasting avviene attraverso l'utilizzo di Nats\cite{Nats}: una piattaforma che implementa il
+pattern publish-subscribe (\cref{fig:nats})
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/nats.png}
+  \end{center}
+  \caption{Funzionamento publish-subscriber nats}\label{fig:nats}
+\end{figure}
+Nats consente di creare topic a cui sono associati gruppi di code e risulta particolarmente
+utile nel caso in cui si voglia mantenere la tracciabilità dei pacchetti trasmessi ed, allo
+stesso tempo evitare loop. Infatti, per ogni connessione ci si sottoscrive ad un topic 
+del tipo \textbf{\textit{room.:room-id.*}} con un gruppo \textbf{\textit{room.:room-id.:username}}
+In questo modo, usando il campo \textit{subject} del \textbf{\textit{MediaPacket}} mostrato 
+in \cref{lst:protobuf-example} si evitano i loop. La funzione \textit{handle\_session},
+mostrata riassunta in ,mostra la sottoscrizione mediante un client di Nats alla room. 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:nats-sub}, captionpos=b,caption={Broadcast di pacchetti multimediali in una sessione WebTransport}]
+async fn handle_session<C>(
+    session: WebTransportSession<C, Bytes>,
+    username: &str,
+    lobby_id: &str,
+    nc: async_nats::client::Client,
+) -> anyhow::Result<()> where
+// ... vincoli sul tipo generico C
+{
+    let subject = format!("room.{}.*", lobby_id).replace(' ', "_");
+    let specific_subject = format!("room.{}.{}", lobby_id, username).replace(' ', "_");
+    let mut sub = match nc
+        .queue_subscribe(subject.clone(), specific_subject.clone())
+        .await
+    {
+        Ok(sub) => {
+            info!("Subscribed to subject {}", subject);
+            sub
+        }
+        Err(e) => {
+            let err = format!("error subscribing to subject {}: {}", subject, e);
+            error!("{}", err);
+            return Err(anyhow!(err));
+        }
+    };
+    // ... codice omesso
+    tokio::spawn(async move {
+      while let Some(msg) = sub.next().await {
+        if !should_run.load(Ordering::SeqCst) {
+          break;
+        }
+          if msg.subject == specific_subject_clone {
+            continue;
+          }
+          let session = session.read().await;
+          if msg.payload.len() > 400 {
+            let stream = session.open_uni(session_id).await;
+              tokio::spawn(async move {
+                match stream {
+                  Ok(mut uni_stream) => {
+                    if let Err(e) = uni_stream.write_all(&msg.payload).await {
+                      error!("Error writing to unidirectional stream: {}", e);
+                    }
+                  }
+                  Err(e) => {
+                    error!("Error opening unidirectional stream: {}", e);
+                  }
+                  }
+                });
+                } else if let Err(e) = session.send_datagram(msg.payload) {
+                    error!("Error sending datagram: {}", e);
+                }
+            }
+        })
+    // ... codice omesso
+} 
+\end{lstlisting}
+
+\subsubsection{Serializzazione binaria: protocol buffer} 
+Protocol buffer \cite{ProtcolBuffer} è un formato di serializzazione binario sviluppato da Google. All'interno 
+del progetto viene utilizzato per serializzare i pacchetti dei flussi multimediali che 
+l'utente genera. La scelta di questo formato di serializzazione binaria deriva dalle necessità 
+di effettuare trasmissione a bassa latenza. Infatti, come mostrato in \cite{popic2016performance},
+i messaggi serializzati in protocol buffer tendono a essere molto più piccoli rispetto a quelli
+JSON e quindi si ha una trasmissione più efficiente. Protocol buffer prevede la dichiarazione dei tipi
+che si andranno a serializzare e deserializzare in un linguaggio descrittivo in file \textit{.proto}. 
+In \cref{lst:protobuf-example}, è mostrato il file utilizzato per serializzare e 
+deserializzare un pacchetto multimediale.
+
+\lstinputlisting[language=protobuf2,style=protobuf,captionpos=b,
+caption={Pacchetto utilizzato per trasmettere flussi multimediali},
+label={lst:protobuf-example}]{../../protobuf/types/media_packet.proto}
+
+Protocol buffer genera, a valle del file .proto, i tipi corrispondenti in tutti i linguaggi 
+di programmazione supportati mendiante un compilatore. Ad esempio, nella cartella protobuf,
+viene utilizzato il seguente comando per compilare i file 
+\begin{verbatim}
+ protoc --rust_out=build/rust types/*.proto 
+\end{verbatim}
+
+\subsection{Servizio REST}
+Oltre alla parte QUIC, l'applicazione fornisce un servizio REST per interagire con le entità 
+presentate nel diagramma E/R in \cref{fig:er}. Il 
+testing di questo servizio è stato effettuato mediante la creazione di una collection 
+Postman. In \cref{fig:create-room} e 
+\cref{fig:get-room}, 
+sono mostrate le operazioni di creazione e ricerca di una stanza. 
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/create_room.png}
+  \caption{API per la creazione di una stanza}
+  \label{fig:create-room}
+\end{figure}
+
+\begin{figure}[hh]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/get_room.png}
+  \caption{API per la ricerca di una stanza dato l'identificativo}
+  \label{fig:get-room}
+\end{figure}
+
+\clearpage
+
+\section{Funzionamento dell'applicazione}
+\subsection{Autenticazione e autorizzazione}
+\subsubsection{Creazione account}
+Il flusso di registrazione account è illustrato in \cref{fig:registration-process}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/sq_registration.png}
+  \end{center}
+  \caption{Sequence diagram processo di registrazione}\label{fig:registration-process}
+\end{figure}
+
+L'applicazione prevede che un utente possa registrarsi previa compilazione di un form in 
+cui indica la sua email (\cref{fig:sign-up-page}). 
+All'invio del form, viene inviata una mail (\cref{fig:register-email})
+attraverso la quale l'utente potrà attivare il proprio account impostando una password
+(\cref{fig:setpassword}). 
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/register_page.png}
+  \end{center}
+  \caption{Pagina di creazione account}\label{fig:sign-up-page}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/register_email.png}
+  \end{center}
+  \caption{Email di conferma account}\label{fig:register-email}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/setpass_page.png}
+  \end{center}
+  \caption{Attivazione account attraverso l'impostazione della password}\label{fig:setpassword}
+\end{figure}
+
+\paragraph{Password hashing} La password impostata dall'utente viene salvata sottoforma di 
+hash. Per l'applicazione è stato scelto l'algoritmo \textit{Argon2}. Per questo motivo, è
+stata implementata la funzionalità \textit{password dimenticata} (\cref{fig:forgot-pass})
+che invia un email simile a quella in \cref{fig:register-email} per reimpostare 
+la password.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/forgot_pass.png}
+  \end{center}
+  \caption{Pagina reset password}\label{fig:forgot-pass}
+\end{figure}
+
+\clearpage
+\subsubsection{Login}
+Infine, l'utente potrà accedere alla piattaforma attraverso un form di login (\cref{fig:login-page}). 
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/login_page.png}
+  \end{center}
+  \caption{Pagina di login dell'applicazione}\label{fig:login-page}
+\end{figure}
+
+All'accesso viene creata una sessione della durata di $7$ giorni con gli attributi
+\textit{SameSite} e \textit{HttpOnly}.
+
+\paragraph{Cookies firmati} La procedura di login produce un token che viene salvato come 
+identificativo di sessione nell'apposita tabella (E/R). Il token viene prodotto con una 
+funzione che implementa l'algoritmo \textit{ChaCha} (un generatore di numeri casuali sicuro 
+dal punto di vista crittografico) \cite{RustChaCha}. Inoltre, i cookie vengono firmati 
+con una chiave fornita come fornita come variabile d'ambiente. Per renderli disponibili 
+a tutta l'applicazione è stato implementato un estrattore che prende i cookie dall'header 
+della richiesta HTTP e lo decodifica (\cref{lst:signed-cookies-extractor}). 
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:signed-cookies-extractor}, captionpos=b,caption={Extractor implementato per decodificare i cookie ad ogni richiesta}]
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for Cookies<'_> {
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        debug!("{:<12} - Signed Cookies", "EXTRACTOR");
+        let key = SESSION_COOKIE_KEY
+            .get()
+            .expect("SESSION KEY IS NOT INITIALIZED");
+        let cookies = tower_cookies::Cookies::from_request_parts(parts, state)
+            .await
+            .unwrap()
+            .signed(key);
+        Ok(Cookies(cookies))
+    }
+}
+\end{lstlisting}
+
+\paragraph{Implementazione rotte sicure} Le pagine a cui bisogna accedere solo se si è 
+effettuato l'accesso implementano un sistema di guardia in cui viene renderizzato il 
+loro contenuto solo se la chiamata all'endpoint \textbf{\textit{/api/auth/me}} non 
+restituisce errori.
+
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:signed-cookies-extractor}, captionpos=b,caption={Extractor implementato per decodificare i cookie ad ogni richiesta}]
+
+let (store, dispatch) = use_store::<Store>();
+use_effect(move || {
+  spawn_local(async move {
+    match Request::get("/api/auth/me").send().await {
+      Ok(res) => {
+        if res.ok() {
+          let user = res.json::<UserResponse>().await.unwrap();
+          dispatch.reduce_mut(move |s| s.auth_user = Some(user.into()));
+        } else {
+          navigator.replace(&Route::Login);
+        }
+      }
+      // network error
+      Err(err) => {
+        log_1(&err.to_string().into());
+      }
+    };
+  });
+});
+\end{lstlisting}
+
+\clearpage
+
+\subsection{Piattaforma}
+\paragraph{Home page}
+La pagina principale \cref{fig:home-page} 
+presenta un form con il quale si può creare una nuova stanza o entrare in una già
+esistente.
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/home_page.png}
+  \end{center}
+  \caption{Home page dell'applicazione}\label{fig:home-page}
+\end{figure}
+
+Creata una sessione, si arriva alla pagina di sessione dove viene effettuata la connessione 
+al server QUIC (\cref{fig:session2}). 
+La pagina supporta la trasmissione audio/video e consente agli utenti di scegliere le 
+sorgenti multimediali.
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/session2_page.png}
+  \end{center}
+  \caption{Sessione con trasmissione audio e video}\label{fig:session2}
+\end{figure}
+
+
+\clearpage
+\section{Deploy}
+L'applicazione è gestita con un Makefile dotato di un help menu:
+\begin{verbatim}
+ make help
+ Usage:
+  up             executes the application using docker-compose
+  build-images   build docker images
+  build          statically build frontend and backend
+  dev            creates nats and postgres container; executes backend and frontend locally
+  help           prints this help message
+\end{verbatim}
+\subsection{Bare metal}
+L'installazione da sorgente richiede la toolchain rust che può essere ottenuta dal sito
+ufficiale. 
+Una volta installato il compilatore rustc, bisogna installare il target per 
+eseguire applicazioni in WebAssembly con il comando:
+\begin{verbatim}
+  rustup target add wasm32-unknown-unknown
+\end{verbatim}
+e successivamente si può installare il bundler Trunk con il comando:
+\begin{verbatim}
+  cargo install --locked trunk
+\end{verbatim}
+Se sono state effettuate modifiche alle dichiarazioni nella cartella \textit{protocol
+buffer}, ricompilare i file con i comandi:
+\begin{verbatim}
+  cd protobuf
+  make generate_rust
+\end{verbatim}
+
+Infine, è possibile eseguire il comando 
+\begin{verbatim}
+  make build 
+\end{verbatim}
+per compilare staticamente \textit{frontend} e \textit{backend} in modalità \textit{release}. 
+Il processo di build produrrà due artefatti:
+\begin{itemize}
+  \item Server: nella cartella \textit{target/release} ci sarà un file chiamato \textbf{\textit{backend}}
+  \item Frontend: nella cartella \textit{frontend/dist} ci sarà il bundle dell'applicazione
+    webassembly che potrà essere servita un qualsiasi webserver.
+\end{itemize}
+
+Terminato il processo di compilazione, bisogna eseguire almeno un'istanza di Nats e Postgres. 
+Il modo più semplice di installare queste dipendenze è di farlo attraverso Docker:
+
+\begin{verbatim}
+  docker run -d --network=host nats
+  docker run -d --network=host -e POSTGRES_PASSWORD=postgres postgres 
+\end{verbatim}
+In questo momento è necessario configurare l'ambiente con le variabili d'ambiente necessarie 
+al funzionamento del backend. Un esempio di configurazione è la seguente:
+\begin{verbatim}
+export RTJAM_DATABASE_URL="postgres://postgres:postgres@localhost/postgres?sslmode=disable"
+export RTJAM_LISTEN_ADDRESS="0.0.0.0:3000"
+export RTJAM_SESSION_KEY="mN1GR7dsQ+Bj8NFIA+n/uvSbBcdyvHnVdFuJSJrQJ3g2/8gGYaATt3Wv7j3xKpD07652no/eddRdD7sJTVjg4w=="
+export RTJAM_NATS_URL="localhost:4222"
+export RTJAM_SMTP_HOST="mail.privateemail.com"
+export RTJAM_SMTP_PORT="587"
+export RTJAM_SMTP_USER="info@capass.org"
+export RTJAM_SMTP_PASSWORD=""
+export RTJAM_SMTP_FROM="info@capass.org"
+export RTJAM_APP_URL="http://localhost:8080"
+export RTJAM_WEBTRANSPORT_ADDRESS="0.0.0.0:4433"
+export RTJAM_CERT_PATH="backend/certs/localhost.dev.pem"
+export RTJAM_KEY_PATH="backend/certs/localhost.dev.key"
+\end{verbatim}
+Configurato l'ambiente, è possibile eseguire il backend.
+
+\subsection{Docker}
+La modalità di installazione con Docker prevede l'esecuzione del comando:
+\begin{verbatim}
+  make build-images up 
+\end{verbatim}
+Analogamente al caso \textit{bare metal}, bisogna configurare l'ambiente con le variabile 
+corrette nel file \textit{docker-compose.json}.
+
+\subsection{Test dell'applicazione} 
+Al momento dello sviluppo solo i browser chromium-based implementano l'API WebTransport: l'
+applicazione quindi \textbf{non} funziona su altri browser. Inoltre, il protocollo QUIC rende
+obbligatorio l'utilizzo del protocollo TLS. In questa repository, sono già forniti dei
+certificati generati con \textit{openssl} (vedi sezione successiva) per eseguire l'applicazione
+localmente.
+
+Attraverso lo script \textit{launch\_chrome.sh} viene eseguita un'istanaza di chrome con parametri
+disponibili solo da riga di comando che bypassano la verifica del certificato e forzano
+l'utilizzo di localhost per connettersi al protocollo QUIC. 
+\begin{verbatim}
+ google-chrome --origin-to-force-quic-on=127.0.0.1:4433 \ 
+ --ignore-certificate-errors-spki-list="$SPKI" \ 
+ --enable-logging --v=1
+\end{verbatim}
+
+I certificati sono stati generati con i seguenti comandi:
+\begin{verbatim}
+openssl req -x509 -newkey rsa:2048 -keyout "backend/certs/localhost.dev.key"\ 
+  -out "backend/certs/localhost.dev.pem" -days 365 -nodes -subj "/CN=127.0.0.1"
+
+openssl x509 -in "backend/certs/localhost.dev.pem" -outform der\
+  -out "backend/certs/localhost.dev.der"
+
+openssl rsa -in "backend/certs/localhost.dev.key" -outform DER\ 
+  -out "backend/certs/localhost.dev.key.der"
+\end{verbatim}
+
+\paragraph{Extra: creazione sorgenti audio virtuali (linux only)}
+In Linux, è possibile effettuare il routing di dispositivi audio attraverso il modulo \textit{null-sink}
+(l'audio che entra in questo nodo non viene riprodotto da nessun dispositivo). Per creare 
+un modulo null-sink eseguire:
+
+\begin{verbatim}
+pactl load-module module-null-sink sink_name=virtmic1\ 
+sink_properties=device.description=Virtual_Microphone_Sink1
+\end{verbatim}
+
+L'uscita di un modulo null-sink può essere catturata attraverso il modulo remap che effettua un redirezionamento verso un ingresso a scelta
+\begin{verbatim}
+pactl load-module module-remap-source master=virtmic1.monitor source_name=virtmic1 \ 
+source_properties=device.description=Virtual_Microphone1
+\end{verbatim}
+
+Attraverso, un'interfaccia grafica come \textit{pavucontrol} è possibile scegliere, per 
+tutte le applicazioni, il sink (\cref{fig:routing-sink}).
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{../figures/selecting_sink.png}
+  \end{center}
+  \caption{Routing dell'uscita di un'applicazione attraverso l'input creato}\label{fig:routing-sink}
+\end{figure}
+
+Infine, basta scegliere la sorgente audio dall'applicazione, come mostrato in \cref{fig:selecting-vmic}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{../figures/selecting_vmic.png}
+  \end{center}
+  \caption{Selezione della sorgente audio nell'applicazione}\label{fig:selecting-vmic}
+\end{figure}
+
 \clearpage
 
 
