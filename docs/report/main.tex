@@ -111,14 +111,14 @@ Come mostrato in \cref{fig:architecture}, l'architettura del sistema è divisa:
   \caption{Architettura del sistema}\label{fig:architecture}
 \end{figure}
 
-Il sistema è stato modellato con il seguente diagramma E/R (\cref{fig:er}), implementato nel database 
+Il sistema è stato modellato con il diagramma E/R in \cref{fig:er}, implementato nel database 
 relazionale mostrato nell'architettura. 
 
 \begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.6\textwidth]{figures/er.png}
   \end{center}
-  \caption{Diagramma E/R dell'aplicazione}\label{fig:er}
+  \caption{Diagramma E/R dell'applicazione}\label{fig:er}
 \end{figure}
 
 Il funzionamento generale dello scambio di informazioni multimediali è mostrato in 
@@ -144,19 +144,24 @@ opportuni controlli) che non si verifichino accessi in memoria illegali e, quind
 presenza di vulnerabilità quali \textit{double free} \textit{use after free}. Questo approccio 
 inoltre, rende non necessaria la presenza di un \textbf{\textit{garbage collector}} e di un 
 \textit{runtime} rendendolo adatto sia per applicazioni embedded che per quelle che richiedono 
-alte prestazioni. Questo aspetto viene implementato attraverso le \textit{enum} che in rust
-possono esprimere un valore e possono essere ispezionate con un pattern matching esaustivo. 
-e sono utilizzate per implementare il concetto di \textbf{\textit{error-as-value}}
-con il quale si evita accesso a oggetti invalidi. Ad esempio, l'enum \textbf{\textit{Option}}
-può assumere due varianti: \textit{None} o \textit{Some<T>}. Un oggetto incluso in questo
+alte prestazioni. Questo aspetto viene implementato attraverso le \textit{enum} che devono essere ispezionate con un pattern matching esaustivo. 
+e sono utilizzate con un patter matching esaustivo. Un esempio lampante è 
+l'enum \textbf{\textit{Option$<$T$>$}} che può assumere due varianti: \textit{None} o \textit{Some<T>}. Un oggetto incluso in questo
 tipo di enum può essere nullo e l'accesso al suo valore forza il programmatore a estrarlo
 dall'enum Option. 
 \begin{verbatim}
-  let n: Option<i32> = Some(1) //diverso da i32 perchè potrebbe essere None
+  let n: Option<i32> = Some(1); //diverso da i32 perchè potrebbe essere None
   if let Some(n) = n {
     // si è sicuri che n è una variabile non nulla
   }
 \end{verbatim}
+Dualmente, l'enum \textit{Result$<$T, Error$>$} indica un'operazione che può restituire 
+un errore e implementa il concetto di \textbf{\textit{error-as-value}}. 
+Questo costrutto forza il programmatore a gestire l'errore ed è possibile 
+enumerare (essendo l'errore un tipo) i modi in cui un programma può fallire sapendo esattamente 
+quali funzioni possono restituire errori. Al contrario, in un meccanismo basato su eccezioni 
+non è possibile sapere quale funzione all'interno di un blocco \textit{try-catch} abbia 
+sollevato un'eccezione.
 
 Inoltre, la presenza del borrow checker assicura che non siano effettuati 
 accessi a puntatori invalidi riducendo il numero di crash. Infine, il linguaggio offre un 
@@ -169,11 +174,12 @@ da un tipo ad un altro.
 framework Axum costruito sul \textit{runtime} asincrono \textit{Tokio} che consente di 
 sviluppare servizi web con uno stile simile a \textit{Springboot} utilizzando i pattern 
 \textbf{\textit{IoC (Inversion of Control)}} e \textbf{\textit{DI (Dependency Injection)}}. 
-Il framework introduce il concetto di stato dell'applicazione: un oggetto che può essere 
+Il framework introduce il concetto di stato dell'applicazione: un oggetto 
 trasmesso agli handler che può essere estratto dal contesto dell'applicazione. Ad esempio,
-in \cref{lst:axum-handler-example}, è possibile osservare un handler che effettua la creazione di una stanza che prende 
-in ingresso un oggetto di tipo \textit{AppState} al cui interno sono presenti i servizi 
-per gestire le sessioni (\textit{session\_service}) e autenticazione (\textit{auth\_service}).
+in \cref{lst:axum-handler-example}, è possibile osservare un handler che effettua il login 
+che prende  in ingresso un oggetto di tipo \textit{AppState} al cui interno sono presenti i 
+servizi  per gestire le sessioni (\textit{session\_service}) e autenticazione 
+(\textit{auth\_service}).
 
 \begin{lstlisting}[language=Rust, style=boxed, label={lst:axum-handler-example}, captionpos=b,caption={Esempio di handler in Axum}]
 async fn login(
@@ -241,13 +247,13 @@ pub fn router(auth_service: auth::Service, session_service: session::Service) ->
 \paragraph{Interazione con database: SQLX} Sqlx è una libreria che consente di interagire 
 con molti database relazionali con la possibilità di effettuare query \textit{type-safe}
 a tempo di compilazione. In particolare, necessita della variabile d'ambiente
-\textit{DATABASE\_URL} che punta al database in utilizzo e controlla durante la fase di 
-compilazione che tutti i parametri in ingresso e in uscita dalla query siano coerenti con lo 
+\textit{DATABASE\_URL} che punta al database in utilizzo e controlla, durante la fase di 
+compilazione, che tutti i parametri in ingresso e in uscita dalla query siano coerenti con lo 
 schema in uso. Inoltre, offre anche un \textit{utility} da riga di comando per gestire migrazioni 
 il cui risultato è presente all'interno della cartella \textit{backend/migrations} del progetto. 
 Ad esempio, in \cref{lst:sqlx-example}, è mostrata una query effettuata utilizzando la macro \textit{sqlx::query\_as!}
 
-\begin{lstlisting}[language=Rust, style=boxed, label={lst:sqlx-example}, captionpos=b,caption={Esempio di query in Rust con SQLX}]
+\begin{lstlisting}[language=Rust, style=boxed, label={lst:sqlx-example}, captionpos=b,caption={Esempio di query in Rust con SQLX: il compilatore assicura che il tipo della variabile \textit{username} sia compatibile con quello del campo della tabella}]
 pub async fn login(&self, username: String, password: String) -> Result<User> {
   let user = sqlx::query_as!(
     User,
@@ -319,7 +325,7 @@ pub async fn send_verification_link(
 
 \end{lstlisting}
 In particolare, l'email viene costruita in formato HTML con un \textit{Askama}: una libreria 
-per il templating dei file html che consente di effettuare il parsing di file di input e di 
+per il templating dei file HTML che consente di effettuare il parsing di file di input e di 
 dichiarare dei placeholder che possono essere sostituiti con dati veri a tempo di esecuzione.  
 In, è mostrato il template usato nel progetto. 
 
@@ -396,6 +402,7 @@ componenti sia in forma funzionale che di classe. Infine, il framework mette a d
 \textbf{\textit{hook}} come \textbf{\textit{use\_state, use\_effect}} che permettono di 
 realizzare interfacce responsive. In \cref{lst:yew-function-component}, è mostrato un esempio di componente funzionale utilizzato 
 nell'applicazione. Per la realizzazione dell'applicazione è stata utilizzata \textbf{\textit{Yewdux}}
+(acceduta attraverso l'hook \textbf{\textit{use\_store()}} a riga 11):
 una libreria di \textit{state management} simile a \textit{Redux} basata su concetti di 
 \textit{getter} e \textit{reducer}.
 
@@ -535,16 +542,17 @@ let audio_processor = MediaStreamTrackProcessor::new(&MediaStreamTrackProcessorI
 \end{lstlisting}
 \subsubsection{WebAssembly} \label{section:web-assembly}
 WebAssembly \cite{rossberg2021webassembly} è un formato binario per una macchina a stack. I browser moderni inglobano al 
-loro interno una macchina WebAssembly e pertanto tutti i linguaggi che producono un programma
-secondo la specifica di questa macchina a stack possono eseguire nel browser e, quindi, avere
-accesso alle funzionalità web. Questo consente di essere indipendente dal target e di avere 
+loro interno una macchina WebAssembly e, pertanto tutti i linguaggi, che producono un programma
+secondo la specifica di questa macchina possono eseguire nel browse. Questo consente di essere indipendente dal target e di avere 
 un'esecuzione isolata dei processi (in maniera simile alla JVM) con il risultato di avere 
 da un lato le performance del linguaggio scelto (ad esempio Rust, C++, C o Go) e dall'altro di 
 avere un ambiente unificato di esecuzione (\cref{fig:web-assembly-arch}
 ). Oltre all'encoding in un formato binario molto 
 più efficiente rispetto a quello classico testuale, WebAssembly specifica la struttura delle
 istruzioni, layout della memoria, formato dei dati e inoltre, specifica la struttura di 
-un runtime asincrono per le applicazioni I/O intensive.
+un runtime asincrono per le applicazioni I/O intensive. Infine, con questa tecnologia è 
+facile far eseguire le applicazioni in \textit{sandbox} migliorando gli aspetti relativi 
+alla sicurezza.
 
 \begin{figure}
   \begin{center}
@@ -573,7 +581,8 @@ Trunk può essere configurato attraverso il file \textit{Trunk.toml} attraverso 
 è possibile indicare la cartella in cui si trova il codice sorgente, impostazioni di proxy 
 e la cartella di uscita. In particolare, Trunk compila il codice sorgente dell'applicazione
 e crea una SPA (Single Page Application): infatti ha bisogno di un file \textit{index.html}
-con il tag \textit{body} vuoto che andrà a popolare con l'html generato dinamicamente. Inoltre,
+con il tag \textit{body} vuoto che andrà a popolare con l'html generato dinamicamente(
+si tratta a tutti gli effetti di Client Side Rendering). Inoltre,
 vengono dichiarati alcuni tag speciali (\textit{data-trunk}) per il serving statico dei file. 
 In,  è mostrato il file utilizzato da Trunk come entrypoint dell'applicazione; mentre in è 
 mostrato il file di configurazione utilizzato.
@@ -598,13 +607,35 @@ mostrato il file di configurazione utilizzato.
 \end{lstlisting}
 \subsubsection{Protocollo QUIC} \label{section:quic-protocol}
 QUIC (Quick UDP Internet Connections) \cref{section:quic-protocol}
-è un protocollo di livello trasporto basasto su HTTP3 pensato per risolvere il problema di
+è un protocollo di livello trasporto basasto su HTTP/3 pensato per risolvere il problema di
 \textit{head-of-line blocking} che si incontrano in protocolli \textit{stream oriented}
 quali TCP in cui un pacchetto appartenente a uno stream blocca tutti gli altri. QUIC risolve
 questo problema supportando nativamente il multiplexing dei flussi di dati; in questo modo i
 flussi più lenti o con un'alta \textit{packet-loss} non influenzano gli altri.
 
-\paragraph{QUIC server side} Per implementare il protocollo QUIC lato server sono state 
+\paragraph{Il problema dell'head-of-line blocking} I protocolli basati su TCP come HTTP/1.1 e 
+HTTP/2 risolvono in maniera divers \textit{HOL}. Infatti, per HTTP/1.1, i browser utilizzano 
+fino a $6$ connessioni concorrenti per ogni dominio in modo da minimizzare il tempo di 
+download per le risorse; mentre HTTP/2 cerca di effettuare il multiplexing delle risorse 
+su una singola connessione TCP dividendo i dati in \textbf{chunk} a cui viene associato 
+un identificativo univoco e poi schedulato sulla connessione. Il primo approccio introduce 
+un problema di saturazione della banda (più richieste concorrenti utilizzano più risorse di 
+rete per il server), mentre il secondo essendo basato su TCP soffre di HOL. 
+In particolare, il problema riscontrato è detto \textbf{\textit{inter-stream head-of-line blocking}}: 
+stream diversi vengono interrotti dal flusso con alta packet-loss poichè TCP implementa una 
+comunicazione con ritrasmissione. Con HTTP/3, questo problema viene risolto (\cref{fig:hol}) con l'adozione 
+di UDP, ma permane il problema dell'\textbf{intra-stream head-of-line blocking}
+\cite{marx2020resource}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{figures/intra-hol-vs-inter-hol.png}
+  \end{center}
+  \caption{Head of Line blocking con 3 flussi di dati indipendenti \cite{marx2020resource}}\label{fig:hol}
+\end{figure}
+
+
+\paragraph{QUIC server-side} Per implementare il protocollo QUIC lato server sono state 
 utilizzate le librerie \textit{sec\_http3} (responsabile della gestione di ALPN e della 
 parte TLS) e \textit{quinn} (responsabile dell'implementazione del protocollo QUIC).
 In \cref{lst:quic-server-config}, è mostrata la configurazione di un listener UDP su cui viene applicato un 
@@ -708,7 +739,7 @@ Infine, una volta ottenuta una connessione QUIC, il server chiama la funzione
   \caption{Diagramma di flusso della funzione handle\_session}\label{fig:flowchart-handle-session}
 \end{figure}
 
-\paragraph{QUIC client side} I browser implementano il protocollo QUIC attraverso la 
+\paragraph{QUIC client-side} I browser implementano il protocollo QUIC attraverso la 
 WebTransport API. Come già spiegato in precedenza, per accedere alla classe WebTransport in 
 un'applicazione WebAssembly è necessario effettuare il mapping delle funzioni nella macchina 
 WASM. In Yew, la connessione è stata realizzata con la libreria \textit{yew-webtransport}. 
@@ -724,7 +755,7 @@ del codec è riportata in \cref{lst:audio-config}. Successivamente, per rendere 
 di vista dei dispositivi si è intervenuto sia sull'encoder che sul decoder (situati 
 rispettivamente nei file \textit{microphone\_encoder.rs} e \textit{config.rs}), 
 come mostrato \cref{lst:encoder-params} in e \cref{lst:decoder-params} . Infine, per migliorare la latenza, si è
-abbasata la dimensione del buffer utilizzato da $10Kb$ a $4Kb$, come mostrato in
+abbasata la dimensione del buffer utilizzato da $100Kb$ a $4Kb$, come mostrato in
 \cref{lst:encoder-buffer-size}. 
 
 \begin{lstlisting}[language=Rust, style=boxed, label={lst:audio-config}, captionpos=b,caption={Configurazione utilizzata per trasmettere l'audio}]
@@ -833,7 +864,7 @@ stesso tempo evitare loop. Infatti, per ogni connessione ci si sottoscrive ad un
 del tipo \textbf{\textit{room.:room-id.*}} con un gruppo \textbf{\textit{room.:room-id.:username}}
 In questo modo, usando il campo \textit{subject} del \textbf{\textit{MediaPacket}} mostrato 
 in \cref{lst:protobuf-example} si evitano i loop. La funzione \textit{handle\_session},
-mostrata riassunta in ,mostra la sottoscrizione mediante un client di Nats alla room. 
+in \cref{lst:nats-sub}, mostra la sottoscrizione mediante un client di Nats alla room. 
 
 \begin{lstlisting}[language=Rust, style=boxed, label={lst:nats-sub}, captionpos=b,caption={Broadcast di pacchetti multimediali in una sessione WebTransport}]
 async fn handle_session<C>(
@@ -923,7 +954,7 @@ sono mostrate le operazioni di creazione e ricerca di una stanza.
 \subsubsection{Creazione account}
 Il flusso di registrazione account è illustrato in \cref{fig:registration-process}.
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.95\textwidth]{figures/sq_registration.png}
   \end{center}
@@ -936,21 +967,21 @@ All'invio del form, viene inviata una mail (\cref{fig:register-email})
 attraverso la quale l'utente potrà attivare il proprio account impostando una password
 (\cref{fig:setpassword}). 
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.95\textwidth]{figures/register_page.png}
   \end{center}
   \caption{Pagina di creazione account}\label{fig:sign-up-page}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.95\textwidth]{figures/register_email.png}
   \end{center}
   \caption{Email di conferma account}\label{fig:register-email}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.95\textwidth]{figures/setpass_page.png}
   \end{center}
@@ -963,7 +994,7 @@ stata implementata la funzionalità \textit{password dimenticata} (\cref{fig:for
 che invia un email simile a quella in \cref{fig:register-email} per reimpostare 
 la password.
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}  
     \includegraphics[width=0.95\textwidth]{figures/forgot_pass.png}
   \end{center}
@@ -974,7 +1005,7 @@ la password.
 \subsubsection{Login}
 Infine, l'utente potrà accedere alla piattaforma attraverso un form di login (\cref{fig:login-page}). 
 
-\begin{figure}
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.95\textwidth]{figures/login_page.png}
   \end{center}
@@ -1075,6 +1106,7 @@ L'applicazione è gestita con un Makefile dotato di un help menu:
  make help
  Usage:
   up             executes the application using docker-compose
+  down           deletes docker containers
   build-images   build docker images
   build          statically build frontend and backend
   dev            creates nats and postgres container; executes backend and frontend locally
@@ -1149,13 +1181,11 @@ corrette nel file \textit{docker-compose.json}.
 Al momento dello sviluppo solo i browser chromium-based implementano l'API WebTransport: l'
 applicazione quindi \textbf{non} funziona su altri browser. Inoltre, il protocollo QUIC rende
 obbligatorio l'utilizzo del protocollo TLS. In questa repository, sono già forniti dei
-certificati generati con \textit{openssl} (vedi sezione successiva) per eseguire l'applicazione
-localmente.
+certificati generati con \textit{openssl}  per eseguire l'applicazione localmente.
 
 Attraverso lo script \textit{launch\_chrome.sh} viene eseguita un'istanaza di chrome con parametri
 disponibili solo da riga di comando che bypassano la verifica del certificato e forzano
-l'utilizzo di localhost per connettersi al protocollo QUIC (nel caso in cui la prova venga 
-effettuata con due computer diversi sostituire 127.0.0.1 con l'indirizzo del server). 
+l'utilizzo di localhost per connettersi al protocollo QUIC. 
 \begin{verbatim}
  google-chrome --origin-to-force-quic-on=127.0.0.1:4433 \ 
  --ignore-certificate-errors-spki-list="$SPKI" \ 
