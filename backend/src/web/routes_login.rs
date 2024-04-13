@@ -68,7 +68,6 @@ async fn login(
 
     let cookie = Cookie::build(Cookie::new(SESSION_COOKIE_NAME, token))
         .http_only(true)
-        .secure(true)
         .expires(expiration)
         .path("/")
         .same_site(SameSite::Strict)

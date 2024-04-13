@@ -372,7 +372,7 @@ fn audio_visualizer(AudioVisualizerProps { audio_id }: &AudioVisualizerProps) ->
                         .unchecked_into::<MediaStream>();
                     let src = audio_context.create_media_stream_source(&device).unwrap();
                     src.connect_with_audio_node(&audio_analyzer);
-                    audio_analyzer.set_fft_size(2048);
+                    audio_analyzer.set_fft_size(8192);
 
                     let buffer_length = audio_analyzer.frequency_bin_count();
                     let mut data_array = vec![0u8; buffer_length as usize];

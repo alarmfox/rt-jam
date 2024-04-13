@@ -84,7 +84,8 @@ localmente.
 
 Attraverso lo script `launch_chrome.sh` viene eseguita un'istanaza di chrome con parametri 
 disponibili solo da riga di comando che bypassano la verifica del certificato e forzano 
-l'utilizzo di localhost per connettersi al protocollo QUIC. 
+l'utilizzo di localhost per connettersi al protocollo QUIC (modificare il campo origin-to-force-quic-on 
+con l'indirizzo IP del server(. 
 ```sh 
  google-chrome --origin-to-force-quic-on=127.0.0.1:4433 --ignore-certificate-errors-spki-list="$SPKI" --enable-logging --v=1
 ```
