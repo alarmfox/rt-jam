@@ -2,6 +2,23 @@
 
 ![vmic](./docs/report/figures/session2_page.png)
 
+## Variabili d'ambiente
+Per funzionare, l'applicazione ha bisogno delle seguenti variabili d'ambiente:
+* RUST_LOG="backend=debug"
+* RTJAM_DATABASE_URL=""
+* RTJAM_LISTEN_ADDRESS=""
+* RTJAM_SESSION_KEY=""
+* RTJAM_NATS_URL=""
+* RTJAM_SMTP_HOST=""
+* RTJAM_SMTP_PORT=""
+* RTJAM_SMTP_USER=""
+* RTJAM_SMTP_PASSWORD=""
+* RTJAM_SMTP_FROM=""
+* RTJAM_APP_URL=""
+* RTJAM_WEBTRANSPORT_ADDRESS=""
+* RTJAM_CERT_PATH=""
+* RTJAM_KEY_PATH=""
+
 ## Struttura della repository
 La repository è organizzata come segue:
 ```
